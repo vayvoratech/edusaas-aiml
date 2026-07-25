@@ -1,0 +1,91 @@
+skill_name,difficulty,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,marks,is_active
+Deep Learning,Easy,What is Deep Learning?,A database,A subset of Machine Learning,A programming language,An operating system,B,Deep Learning uses neural networks.,1,True
+Deep Learning,Easy,What is the basic building block of Deep Learning?,Decision Tree,Neural Network,K-Means,SVM,B,Neural networks are the foundation.,1,True
+Deep Learning,Easy,A neuron receives?,Only one input,Multiple inputs,No inputs,Only outputs,B,Artificial neurons combine multiple inputs.,1,True
+Deep Learning,Easy,Which library is widely used for Deep Learning?,Flask,TensorFlow,Requests,BeautifulSoup,B,TensorFlow is a popular DL framework.,1,True
+Deep Learning,Easy,Which library was developed by Facebook?,PyTorch,NumPy,Pandas,OpenCV,A,PyTorch was developed by Meta/Facebook.,1,True
+Deep Learning,Easy,Which function introduces non-linearity?,Optimizer,Activation Function,Loss Function,Epoch,B,Activation functions make networks nonlinear.,1,True
+Deep Learning,Easy,Which activation function outputs values between 0 and 1?,ReLU,Sigmoid,Tanh,Softmax,B,"Sigmoid maps to (0,1).",1,True
+Deep Learning,Easy,Which activation function is commonly used in hidden layers?,ReLU,Linear,Softmax,Sigmoid,A,ReLU is widely used.,1,True
+Deep Learning,Easy,What is an epoch?,One forward pass,One complete pass through training data,A layer,A neuron,B,An epoch processes the entire dataset once.,1,True
+Deep Learning,Easy,What is a batch?,Entire dataset,Subset of training data,A layer,Optimizer,B,Batches split data during training.,1,True
+Deep Learning,Easy,What is the input layer?,Last layer,First layer receiving data,Hidden layer,Output layer,B,Input layer receives features.,1,True
+Deep Learning,Easy,What is the output layer?,First layer,Middle layer,Final prediction layer,Activation layer,C,Output layer produces predictions.,1,True
+Deep Learning,Easy,What is a hidden layer?,Layer between input and output,Input layer,Output layer,Loss layer,A,Hidden layers learn representations.,1,True
+Deep Learning,Easy,Which task is CNN mainly used for?,Image processing,Sorting,Databases,Networking,A,CNNs excel in computer vision.,1,True
+Deep Learning,Easy,Which network is commonly used for sequential data?,CNN,RNN,Decision Tree,KNN,B,RNNs process sequences.,1,True
+Deep Learning,Easy,What does GPU stand for?,General Processing Unit,Graphics Processing Unit,Graph Processing Utility,Global Processor Unit,B,GPUs accelerate DL training.,1,True
+Deep Learning,Easy,What is training?,Making predictions,Learning from data,Deploying model,Cleaning data,B,Training updates model weights.,1,True
+Deep Learning,Easy,What is inference?,Training,Prediction using trained model,Scaling,Encoding,B,Inference makes predictions.,1,True
+Deep Learning,Easy,Which function measures prediction error?,Loss Function,Activation,Optimizer,Dropout,A,Loss quantifies errors.,1,True
+Deep Learning,Easy,Which optimizer is widely used?,Adam,Bubble,Merge,DFS,A,Adam is a popular optimizer.,1,True
+Deep Learning,Easy,What is overfitting?,Good generalization,Model memorizes training data,Too little training,Normalization,B,Overfitting hurts unseen performance.,1,True
+Deep Learning,Easy,What is dropout used for?,Increase neurons,Reduce overfitting,Increase learning rate,Scale inputs,B,Dropout randomly disables neurons.,1,True
+Deep Learning,Easy,What is a label?,Input feature,Expected output,Optimizer,Epoch,B,Labels are target values.,1,True
+Deep Learning,Easy,Which activation outputs the highest probability class?,ReLU,Softmax,Sigmoid,Tanh,B,Softmax is used in multi-class output.,1,True
+Deep Learning,Easy,What is Tensor?,Database,Multi-dimensional array,Optimizer,Loss,B,Tensors are core DL data structures.,1,True
+Deep Learning,Easy,Which device usually trains DL models faster?,CPU,GPU,Hard disk,RAM,B,GPUs provide parallel computation.,1,True
+Deep Learning,Easy,What is image classification?,Detect objects,Assign an image to a class,Compress image,Resize image,B,Classification predicts one class.,1,True
+Deep Learning,Easy,What is binary classification?,Two classes,Three classes,Regression,Clustering,A,Binary classification has two labels.,1,True
+Deep Learning,Easy,What is multiclass classification?,One class,Many classes,Regression,Clustering,B,Predict one among many classes.,1,True
+Deep Learning,Easy,Why normalize input data?,Improve training stability,Reduce rows,Increase labels,Delete features,A,Normalization helps optimization.,1,True
+Deep Learning,Medium,What is backpropagation?,Prediction,Algorithm to update weights,Data cleaning,Encoding,B,Uses gradients to learn.,1,True
+Deep Learning,Medium,Which optimizer adapts learning rates automatically?,SGD,Adam,RMS,None,B,Adam adapts learning rates.,1,True
+Deep Learning,Medium,What is vanishing gradient?,Gradients become very small,Large gradients,Missing data,GPU error,A,Makes deep networks hard to train.,1,True
+Deep Learning,Medium,What problem does ReLU help reduce?,Overfitting,Vanishing gradients,Data leakage,Class imbalance,B,ReLU alleviates vanishing gradients.,1,True
+Deep Learning,Medium,What is batch normalization?,Normalize activations,Normalize dataset only,Optimizer,Loss,A,Improves stability.,1,True
+Deep Learning,Medium,CNN convolution layers primarily learn?,Image features,Database tables,Text only,Loss,A,Convolutions extract features.,1,True
+Deep Learning,Medium,Pooling layers are mainly used to?,Increase dimensions,Reduce spatial dimensions,Increase parameters,Normalize,B,Pooling downsamples feature maps.,1,True
+Deep Learning,Medium,Max pooling selects?,Average value,Largest value,Smallest value,Random value,B,Max pooling picks maximum.,1,True
+Deep Learning,Medium,Which layer converts feature maps into vectors?,Flatten,Pooling,Dropout,Dense,A,Flatten prepares dense layers.,1,True
+Deep Learning,Medium,Dense layer is also called?,Fully Connected Layer,Input Layer,Pooling Layer,Conv Layer,A,Dense layers connect all neurons.,1,True
+Deep Learning,Medium,What is learning rate?,Dataset size,Weight update step size,Epoch count,Neuron count,B,Controls optimization speed.,1,True
+Deep Learning,Medium,Too high learning rate may?,Improve always,Cause divergence,Reduce memory,Increase labels,B,Training becomes unstable.,1,True
+Deep Learning,Medium,What is early stopping?,Stop when validation stops improving,Delete epochs,Skip testing,Freeze layers,A,Prevents overfitting.,1,True
+Deep Learning,Medium,Transfer learning means?,Training from scratch,Using a pretrained model,Deleting layers,Scaling inputs,B,Reuses learned features.,1,True
+Deep Learning,Medium,Which pretrained CNN is popular?,ResNet,Linear Regression,KNN,Naive Bayes,A,ResNet is widely used.,1,True
+Deep Learning,Medium,RNN is suitable for?,Sequential data,Images only,Tables,Clustering,A,RNN models sequences.,1,True
+Deep Learning,Medium,LSTM improves RNN by?,Handling long-term dependencies,Reducing dataset,Removing neurons,Scaling data,A,LSTM combats vanishing gradients.,1,True
+Deep Learning,Medium,GRU is?,Simplified LSTM,Optimizer,Loss,Pooling,A,GRU is a gated recurrent unit.,1,True
+Deep Learning,Medium,What does dropout randomly disable?,Training data,Neurons,Epochs,Labels,B,Dropout deactivates neurons.,1,True
+Deep Learning,Medium,Data augmentation helps?,Increase training diversity,Reduce images,Delete labels,Scale loss,A,Improves generalization.,1,True
+Deep Learning,Medium,What is one-hot encoding?,Binary vector representation,Scaling,Normalization,Pooling,A,Represents categories.,1,True
+Deep Learning,Medium,Binary cross-entropy is used for?,Binary classification,Regression,Clustering,PCA,A,Appropriate loss.,1,True
+Deep Learning,Medium,Categorical cross-entropy is used for?,Regression,Multi-class classification,Clustering,Detection,B,Used with Softmax.,1,True
+Deep Learning,Medium,Which metric is common for classification?,Accuracy,RMSE,MAE,MSE,A,Accuracy measures correct predictions.,1,True
+Deep Learning,Medium,Fine-tuning means?,Training selected pretrained layers,Deleting layers,Scaling data,Encoding,A,Adjust pretrained weights.,1,True
+Deep Learning,Medium,Which framework uses tensors extensively?,TensorFlow,Flask,Django,SQLite,A,TensorFlow is tensor-based.,1,True
+Deep Learning,Medium,What is inference latency?,Prediction response time,Epoch count,Loss,Accuracy,A,Important in deployment.,1,True
+Deep Learning,Medium,Checkpointing saves?,Model state,Dataset,GPU,Optimizer only,A,Allows training resume.,1,True
+Deep Learning,Medium,Validation data is used to?,Tune model,Train model,Test final only,Encode,A,Guides model selection.,1,True
+Deep Learning,Medium,Test data should be used?,Once for final evaluation,Every epoch,For training,For augmentation,A,Avoid leakage.,1,True
+Deep Learning,Hard,What is self-attention used in?,Transformers,CNN,KNN,Decision Trees,A,Self-attention powers Transformers.,1,True
+Deep Learning,Hard,Which architecture introduced self-attention?,AlexNet,Transformer,LeNet,VGG,B,Transformers rely on attention.,1,True
+Deep Learning,Hard,What does BERT stand for?,Bidirectional Encoder Representations from Transformers,Basic Encoder Representation Training,Binary Encoder,None,A,BERT is a Transformer encoder.,1,True
+Deep Learning,Hard,GPT is primarily based on?,Transformer Decoder,CNN,RNN,SVM,A,GPT uses decoder-only Transformers.,1,True
+Deep Learning,Hard,Residual connections help?,Train deeper networks,Reduce labels,Normalize images,Encode data,A,Residuals ease optimization.,1,True
+Deep Learning,Hard,What is exploding gradient?,Very large gradients,Small gradients,Missing values,GPU failure,A,Causes unstable training.,1,True
+Deep Learning,Hard,Gradient clipping is used to?,Limit large gradients,Normalize data,Encode labels,Pool features,A,Improves stability.,1,True
+Deep Learning,Hard,Vision Transformer processes images as?,Patches,Pixels only,Rows,Channels,A,ViT tokenizes image patches.,1,True
+Deep Learning,Hard,Attention score measures?,Importance between tokens,Learning rate,Loss,Epoch,A,Attention weights relationships.,1,True
+Deep Learning,Hard,Positional encoding provides?,Order information,Normalization,Pooling,Regularization,A,Transformers need sequence order.,1,True
+Deep Learning,Hard,Which optimizer often outperforms SGD in practice?,AdamW,Bubble,DFS,Merge,A,AdamW decouples weight decay.,1,True
+Deep Learning,Hard,Weight decay is a form of?,Regularization,Pooling,Activation,Encoding,A,Discourages large weights.,1,True
+Deep Learning,Hard,Mixed precision training aims to?,Speed up training,Reduce labels,Increase epochs,Remove layers,A,Uses FP16/FP32.,1,True
+Deep Learning,Hard,Distributed training allows?,Multiple devices,One neuron,Single epoch,Encoding,A,Scales training.,1,True
+Deep Learning,Hard,Knowledge distillation transfers?,Teacher model knowledge,Database,CSV,GPU,A,Student learns from teacher.,1,True
+Deep Learning,Hard,What is beam search?,Sequence decoding strategy,Optimizer,Activation,Pooling,A,Used in NLP generation.,1,True
+Deep Learning,Hard,Teacher forcing is used in?,Sequence models,CNN,Regression,Clustering,A,Feeds true previous outputs.,1,True
+Deep Learning,Hard,Masked language modeling is used by?,BERT,GPT,ResNet,LeNet,A,Core BERT pretraining task.,1,True
+Deep Learning,Hard,Causal language modeling is used by?,GPT,BERT,VGG,AlexNet,A,Predicts next token.,1,True
+Deep Learning,Hard,BLEU score evaluates?,Machine translation,Regression,Clustering,Detection,A,BLEU compares translations.,1,True
+Deep Learning,Hard,IoU metric is common in?,Object Detection,Regression,Clustering,PCA,A,Intersection over Union.,1,True
+Deep Learning,Hard,mAP evaluates?,Detection models,Regression,Classification only,Clustering,A,Mean Average Precision.,1,True
+Deep Learning,Hard,Dice coefficient is common for?,Segmentation,Regression,Ranking,Clustering,A,Overlap metric.,1,True
+Deep Learning,Hard,U-Net is popular for?,Image Segmentation,Translation,Regression,Recommendation,A,Medical imaging etc.,1,True
+Deep Learning,Hard,YOLO is used for?,Object Detection,Regression,Clustering,OCR,A,Real-time detection.,1,True
+Deep Learning,Hard,GAN consists of?,Generator and Discriminator,CNN and RNN,Encoder and Decoder only,Optimizer and Loss,A,Adversarial learning.,1,True
+Deep Learning,Hard,Autoencoders are mainly used for?,Representation learning,Sorting,Databases,Networking,A,Learn compressed representations.,1,True
+Deep Learning,Hard,Latent space refers to?,Compressed feature representation,Dataset,Optimizer,GPU memory,A,Internal embedding space.,1,True
+Deep Learning,Hard,Model quantization aims to?,Reduce model size,Increase labels,Add layers,Normalize inputs,A,Optimizes deployment.,1,True
+Deep Learning,Hard,ONNX is commonly used for?,Model interoperability,Data cleaning,Visualization,Training labels,A,Portable model format.,1,True

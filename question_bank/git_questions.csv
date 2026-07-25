@@ -1,0 +1,91 @@
+skill_name,difficulty,question_text,option_a,option_b,option_c,option_d,correct_option,explanation,marks,is_active
+Git,Easy,What is Git?,Database,Version Control System,IDE,OS,B,Git tracks code changes.,1,True
+Git,Easy,Who created Git?,James Gosling,Linus Torvalds,Guido van Rossum,Dennis Ritchie,B,Linus created Git.,1,True
+Git,Easy,Which command initializes a repository?,git start,git init,git create,git new,B,git init creates a repository.,1,True
+Git,Easy,Which command checks repository status?,git log,git status,git info,git state,B,git status shows changes.,1,True
+Git,Easy,Which command stages files?,git add,git stage,git push,git commit,A,git add stages files.,1,True
+Git,Easy,Which command saves staged changes?,git save,git commit,git upload,git merge,B,git commit creates a snapshot.,1,True
+Git,Easy,Which command uploads commits?,git clone,git pull,git push,git fetch,C,git push uploads changes.,1,True
+Git,Easy,Which command downloads a repository?,git clone,git copy,git pull,git fork,A,git clone copies a repository.,1,True
+Git,Easy,Which command downloads latest changes?,git pull,git add,git init,git branch,A,git pull fetches and merges.,1,True
+Git,Easy,Which command shows commit history?,git history,git log,git showall,git commits,B,git log lists commits.,1,True
+Git,Easy,Which file ignores tracked files?,ignore.txt,.gitignore,.ignore,git.txt,B,.gitignore excludes files.,1,True
+Git,Easy,Which branch is default commonly?,dev,master/main,test,release,B,Modern Git commonly uses main.,1,True
+Git,Easy,Which command creates a branch?,git branch,git new,git checkout,git merge,A,git branch creates branches.,1,True
+Git,Easy,Which command switches branches?,git switch,git checkout,Both,git move,C,checkout and switch can change branches.,1,True
+Git,Easy,Which command merges branches?,git join,git merge,git combine,git sync,B,git merge combines history.,1,True
+Git,Easy,Git primarily tracks?,Folders,File changes,Databases,Servers,B,Git tracks file revisions.,1,True
+Git,Easy,Repository means?,Collection of Git history,Database,Folder only,Compiler,A,Repository stores project history.,1,True
+Git,Easy,Commit is?,Saved snapshot,Upload,Download,Branch,A,Commit records changes.,1,True
+Git,Easy,Remote repository is?,Online/shared repo,Local folder,IDE,Compiler,A,Remote hosts shared code.,1,True
+Git,Easy,Which platform hosts Git repositories?,GitHub,Excel,Photoshop,Chrome,A,GitHub hosts Git repos.,1,True
+Git,Easy,Which command shows configured remotes?,git remote -v,git remotes,git host,git list,A,Displays remotes.,1,True
+Git,Easy,HEAD points to?,Current commit,First commit,Remote,Tag,A,HEAD references current commit.,1,True
+Git,Easy,Which command removes staged file?,git reset,git remove,git undo,git delete,A,git reset unstages.,1,True
+Git,Easy,Git is?,Distributed,Centralized only,Cloud only,Local only,A,Git is distributed.,1,True
+Git,Easy,Which command creates a tag?,git tag,git mark,git label,git save,A,Tags mark releases.,1,True
+Git,Easy,Branch helps?,Parallel development,Delete files,Increase RAM,Compile,A,Branches isolate work.,1,True
+Git,Easy,Working directory contains?,Current files,History only,Remote,Tags,A,Files being edited.,1,True
+Git,Easy,Staging area is?,Area before commit,Remote,Branch,History,A,Index before commit.,1,True
+Git,Easy,Git can track binary files?,Yes,No,Only images,Only text,A,Though not always ideal.,1,True
+Git,Easy,Commit messages should be?,Clear and descriptive,Random,Empty,Very long always,A,Good messages aid history.,1,True
+Git,Medium,Difference between fetch and pull?,Pull fetches+merges,Same,Fetch uploads,Pull deletes,A,Pull includes merge.,1,True
+Git,Medium,Which command shows branch list?,git branches,git branch,git list,git show,B,Lists branches.,1,True
+Git,Medium,Cherry-pick does?,Apply specific commit,Delete commit,Merge all,Clone,A,Copies selected commit.,1,True
+Git,Medium,Rebase mainly?,Rewrites history,Deletes repo,Creates tag,Uploads,A,Rebase changes commit base.,1,True
+Git,Medium,Merge conflict occurs when?,Same lines changed,Network fails,Commit fails,Repo empty,A,Manual resolution needed.,1,True
+Git,Medium,Stash is used to?,Temporarily save changes,Delete changes,Push,Merge,A,git stash shelves work.,1,True
+Git,Medium,Apply latest stash?,git stash pop,git pop,git apply,git merge,A,Pop restores and removes.,1,True
+Git,Medium,Show differences?,git diff,git log,git show,git ls,A,git diff compares changes.,1,True
+Git,Medium,Undo last commit keep changes?,git reset --soft HEAD~1,git delete,git pull,git push,A,Soft reset preserves work.,1,True
+Git,Medium,View one commit details?,git show,git view,git log,git commit,A,git show displays commit.,1,True
+Git,Medium,Fast-forward merge means?,Linear merge,Conflict,Delete branch,Rebase,A,No merge commit needed.,1,True
+Git,Medium,Detached HEAD means?,Not on branch,Remote only,Deleted repo,Conflict,A,HEAD references commit directly.,1,True
+Git,Medium,Fork is?,Personal copy of repo,Branch,Commit,Tag,A,Common on GitHub.,1,True
+Git,Medium,Pull request is?,Request to merge,Download,Upload,Clone,A,Code review workflow.,1,True
+Git,Medium,git restore is used to?,Restore files,Push,Clone,Merge,A,Restores working tree.,1,True
+Git,Medium,Which command renames branch?,git branch -m,git rename,git mv,git switch,A,-m renames.,1,True
+Git,Medium,Delete local branch?,git branch -d,git delete,git rm,git remove,A,Deletes merged branch.,1,True
+Git,Medium,Delete remote branch?,git push origin --delete,git remote delete,git rm,git clean,A,Removes remote branch.,1,True
+Git,Medium,Squash commits means?,Combine commits,Delete repo,Split commit,Clone,A,Creates cleaner history.,1,True
+Git,Medium,Bisect helps?,Find bad commit,Merge,Clone,Push,A,Binary search through commits.,1,True
+Git,Medium,git blame shows?,Line authors,Errors,Branches,Tags,A,Shows who changed each line.,1,True
+Git,Medium,Origin refers to?,Default remote,Branch,Commit,Tag,A,Usually cloned remote.,1,True
+Git,Medium,Upstream branch is?,Tracking branch,Deleted,Tag,Repo,A,Tracks remote branch.,1,True
+Git,Medium,Amend commit?,git commit --amend,git edit,git fix,git patch,A,Edits last commit.,1,True
+Git,Medium,Clean command removes?,Untracked files,History,Branches,Tags,A,git clean.,1,True
+Git,Medium,Reset hard does?,Discard changes,Stage,Merge,Push,A,Dangerous reset.,1,True
+Git,Medium,Interactive rebase allows?,Edit history,Clone,Push,Delete repo,A,Modify commits.,1,True
+Git,Medium,Tag types include?,Lightweight and annotated,Binary,Remote,Hidden,A,Two common tag types.,1,True
+Git,Medium,Git LFS is for?,Large files,Logs,Branches,Tags,A,Large File Storage.,1,True
+Git,Medium,Semantic version tag example?,v1.2.0,release,tag1,main,A,Common versioning.,1,True
+Git,Hard,Three-way merge uses?,Common ancestor,Only latest,Remote only,Tag,A,Merge algorithm.,1,True
+Git,Hard,Reflog records?,HEAD movements,Remote history,Tags,Branches only,A,Useful for recovery.,1,True
+Git,Hard,Recover deleted commit with?,git reflog,git clean,git clone,git add,A,Find lost commits.,1,True
+Git,Hard,Interactive staging command?,git add -p,git patch,git split,git part,A,Patch staging.,1,True
+Git,Hard,Filter-branch/filter-repo used for?,Rewrite history,Merge,Push,Clone,A,History rewriting.,1,True
+Git,Hard,Submodule is?,Repo inside repo,Branch,Commit,Tag,A,References another repository.,1,True
+Git,Hard,Subtree differs by?,Copies code into repo,Remote only,Tag,None,A,Vendoring approach.,1,True
+Git,Hard,Git object types include?,"Blob, Tree, Commit, Tag",File only,Commit only,Tree only,A,Core objects.,1,True
+Git,Hard,SHA-1 identifies?,Git objects,Users,Branches,Tags,A,Hashes identify objects.,1,True
+Git,Hard,Packfiles are for?,Storage optimization,Security,Merging,Tags,A,Compress objects.,1,True
+Git,Hard,Garbage collection command?,git gc,git clean,git pruneall,git fix,A,Optimizes repository.,1,True
+Git,Hard,Prune removes?,Unreachable objects,Tracked files,Branches,Tags,A,Cleanup.,1,True
+Git,Hard,Bare repository lacks?,Working directory,Commits,Branches,History,A,Used on servers.,1,True
+Git,Hard,Hooks execute?,On Git events,On boot,On compile,Weekly,A,Automate tasks.,1,True
+Git,Hard,Pre-commit hook runs?,Before commit,After push,Before clone,After merge,A,Validation.,1,True
+Git,Hard,CI pipelines often trigger on?,Push/PR,Status,Clone,Init,A,Automation.,1,True
+Git,Hard,Rebase vs merge main benefit?,Linear history,More conflicts,Deletes commits,None,A,Cleaner history.,1,True
+Git,Hard,Force push risk?,Overwrite remote history,Deletes local repo,Creates tag,None,A,Use carefully.,1,True
+Git,Hard,Protected branch prevents?,Unsafe pushes,Commits,Clones,Tags,A,Common in teams.,1,True
+Git,Hard,Signed commits provide?,Authenticity,Speed,Compression,Storage,A,Cryptographic verification.,1,True
+Git,Hard,Sparse checkout loads?,Subset of files,Whole repo,Tags,Branches,A,Large repos.,1,True
+Git,Hard,Worktree allows?,Multiple checkouts,More remotes,Tags,Hooks,A,Parallel working trees.,1,True
+Git,Hard,git archive creates?,Project archive,Commit,Branch,Hook,A,Exports snapshot.,1,True
+Git,Hard,Blobs store?,File contents,Commits,Trees,Branches,A,Blob objects.,1,True
+Git,Hard,Trees store?,Directory structure,Commits,Users,Tags,A,Tree objects.,1,True
+Git,Hard,Commit object stores?,Metadata and tree,Only file,Tag,Remote,A,Commit references tree.,1,True
+Git,Hard,Annotated tag contains?,Metadata,Name only,Nothing,Branch,A,Includes author/message.,1,True
+Git,Hard,Git uses DAG meaning?,Directed Acyclic Graph,Database Access Grid,Data Graph,None,A,Commit graph.,1,True
+Git,Hard,Monorepo means?,Single repo for many projects,One branch,One commit,One tag,A,Large unified repository.,1,True
+Git,Hard,Best practice before push?,Pull/rebase latest changes,Delete history,Force push,Reset hard,A,Reduce conflicts.,1,True
