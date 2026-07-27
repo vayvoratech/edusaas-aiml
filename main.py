@@ -1,5 +1,5 @@
 from config.db_connection import get_connection
-
+from recommendation_engine import RecommendationEngine
 from adaptive_engine import (
     start_quiz,
     start_skill,
@@ -234,6 +234,12 @@ def main():
 
         print("\nCongratulations!")
         print("No Skill Gaps Found.")
+        
+    # Calculate student skill results
+    calculate_skill_score(session_id, state)
+    # Run recommendation engine automatically
+    engine = RecommendationEngine()
+    engine.display_recommendations(session_id)
 
 
 if __name__ == "__main__":
