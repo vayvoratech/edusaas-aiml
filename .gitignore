@@ -25,3 +25,8 @@ __pycache__/
 # Operating system files
 .DS_Store
 Thumbs.db
+
+models/sentiment/model.safetensors
+models/sentiment/tokenizer.json
+models/sentiment/config.json
+models/sentiment/tokenizer_config.json
