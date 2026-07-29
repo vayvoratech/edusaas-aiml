@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+    VAYVORA:${{secrets:vayvora}}
+      
 
     steps:
       - name: Checkout code
