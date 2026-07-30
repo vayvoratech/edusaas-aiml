@@ -1,19 +1,19 @@
-from fastapi import FastAPI
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.dropout.predict_dropout import predict_dropout
+from src.exceptions.custom_exceptions import EduAIException
 
 
-app = FastAPI(
-    title="EduAI Dropout Prediction API",
-    description="API for predicting student dropout risk",
-    version="1.0"
+router = APIRouter(
+    prefix="/dropout",
+    tags=["Dropout Prediction"]
 )
 
 
-# --------------------------------
+# ---------------------------------------
 # Input Schema
-# --------------------------------
+# ---------------------------------------
 
 class DropoutInput(BaseModel):
 
@@ -31,25 +31,63 @@ class DropoutInput(BaseModel):
     assignment_completion_rate: float
 
 
-# --------------------------------
+# ---------------------------------------
 # Home Endpoint
-# --------------------------------
+# ---------------------------------------
 
-@app.get("/")
+@router.get("/")
 def home():
 
     return {
-        "message": "EduAI Dropout Prediction API is running"
+        "success": True,
+        "message": "Dropout Prediction API is Running",
+        "data": None
     }
 
 
-# --------------------------------
-# Dropout Prediction Endpoint
-# --------------------------------
+# ---------------------------------------
+# Health Check
+# ---------------------------------------
 
-@app.post("/predict-dropout")
+@router.get("/health")
+def health():
+
+    return {
+
+        "success": True,
+
+        "message": "Dropout Prediction Service Healthy",
+
+        "data": {
+            "status": "healthy"
+        }
+
+    }
+
+
+# ---------------------------------------
+# Prediction Endpoint
+# ---------------------------------------
+
+@router.post("/predict")
 def dropout_prediction(data: DropoutInput):
 
-    result = predict_dropout(data.model_dump())
+    try:
 
-    return result
+        result = predict_dropout(
+            data.model_dump()
+        )
+
+        return {
+
+            "success": True,
+
+            "message": "Dropout prediction completed successfully.",
+
+            "data": result
+
+        }
+
+    except Exception as e:
+
+        raise EduAIException(str(e))

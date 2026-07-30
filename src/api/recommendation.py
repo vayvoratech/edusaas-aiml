@@ -1,36 +1,80 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter
 
 from src.recommendation.hybrid_recommendation import recommend
+from src.exceptions.custom_exceptions import EduAIException
 
 
-app = FastAPI(
-    title="EduAI Recommendation API",
-    description="Course Recommendation API",
-    version="1.0"
+router = APIRouter(
+    prefix="/recommendation",
+    tags=["Recommendation System"]
 )
 
 
-@app.get("/")
+# ---------------------------------------
+# Home
+# ---------------------------------------
+
+@router.get("/")
 def home():
+
     return {
-        "message": "EduAI Recommendation API is running 🚀"
+        "success": True,
+        "message": "Recommendation API is Running",
+        "data": None
     }
 
 
-@app.get("/recommend")
-def get_recommendations(student_id: int, course_name: str):
+# ---------------------------------------
+# Health
+# ---------------------------------------
+
+@router.get("/health")
+def health():
+
+    return {
+        "success": True,
+        "message": "Recommendation Service Healthy",
+        "data": {
+            "status": "healthy"
+        }
+    }
+
+
+# ---------------------------------------
+# Get Recommendations
+# ---------------------------------------
+
+@router.get("/recommend")
+def get_recommendations(
+    student_id: int,
+    course_name: str
+):
 
     try:
-        recommendations = recommend(student_id, course_name)
+
+        recommendations = recommend(
+            student_id,
+            course_name
+        )
 
         return {
-            "student_id": student_id,
-            "course_name": course_name,
-            "recommendations": recommendations
+
+            "success": True,
+
+            "message": "Recommendations generated successfully.",
+
+            "data": {
+
+                "student_id": student_id,
+
+                "course_name": course_name,
+
+                "recommendations": recommendations
+
+            }
+
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
+
+        raise EduAIException(str(e))

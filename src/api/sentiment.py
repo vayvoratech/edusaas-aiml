@@ -1,54 +1,66 @@
-from fastapi import FastAPI, HTTPException
+from typing import List
+import os
+
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from src.sentiment.sentiment_service import sentiment_service
+from src.exceptions.custom_exceptions import EduAIException
 
 
-app = FastAPI(
-    title="EduSaaS Sentiment Analysis API",
-    version="2.0.0",
-    description="Production Ready Sentiment Analysis API"
+router = APIRouter(
+    prefix="/sentiment",
+    tags=["Sentiment Analysis"]
 )
 
 
 # ---------------------------------------
-# Request Schema
+# Request Schemas
 # ---------------------------------------
 
 class SentimentRequest(BaseModel):
 
     student_id: int = Field(
         ...,
-        example=101
+        json_schema_extra={"example": 101}
     )
 
     course_id: int = Field(
         ...,
-        example=15
+        json_schema_extra={"example": 15}
     )
 
     discussion_id: int = Field(
         ...,
-        example=5001
+        json_schema_extra={"example": 5001}
     )
 
     post_text: str = Field(
         ...,
         min_length=2,
         max_length=5000,
-        example="This course is amazing."
+        json_schema_extra={
+            "example": "This course is amazing."
+        }
     )
 
 
+class BatchSentimentRequest(BaseModel):
+
+    requests: List[SentimentRequest]
+
+
 # ---------------------------------------
-# Home Endpoint
+# Home
 # ---------------------------------------
 
-@app.get("/")
+@router.get("/")
 def home():
 
     return {
-        "message": "EduSaaS Sentiment Analysis API is Running"
+        "success": True,
+        "message": "Sentiment Analysis API is Running",
+        "data": None
     }
 
 
@@ -56,13 +68,25 @@ def home():
 # Health Check
 # ---------------------------------------
 
-@app.get("/health")
+@router.get("/health")
 def health():
 
     return {
-        "status": "healthy",
-        "model": "DistilBERT",
-        "version": "1.0"
+
+        "success": True,
+
+        "message": "Sentiment Analysis Service Healthy",
+
+        "data": {
+
+            "status": "healthy",
+
+            "model": "DistilBERT",
+
+            "version": os.getenv("MODEL_VERSION")
+
+        }
+
     }
 
 
@@ -70,31 +94,81 @@ def health():
 # Predict Sentiment
 # ---------------------------------------
 
-@app.post("/predict-sentiment")
-def predict(request: SentimentRequest):
+@router.post("/predict-sentiment")
+def predict_sentiment(request: SentimentRequest):
 
     try:
 
         result = sentiment_service.predict(
 
-            request.student_id,
+            student_id=request.student_id,
 
-            request.course_id,
+            course_id=request.course_id,
 
-            request.discussion_id,
+            discussion_id=request.discussion_id,
 
-            request.post_text
+            post_text=request.post_text
 
         )
 
-        return result
+        return {
+
+            "success": True,
+
+            "message": "Sentiment prediction completed successfully.",
+
+            "data": result
+
+        }
 
     except Exception as e:
 
-        raise HTTPException(
+        raise EduAIException(str(e))
 
-            status_code=500,
 
-            detail=str(e)
+# ---------------------------------------
+# Batch Prediction
+# ---------------------------------------
 
-        )
+@router.post("/batch-predict")
+def batch_predict(request: BatchSentimentRequest):
+
+    try:
+
+        results = []
+
+        for item in request.requests:
+
+            prediction = sentiment_service.predict(
+
+                student_id=item.student_id,
+
+                course_id=item.course_id,
+
+                discussion_id=item.discussion_id,
+
+                post_text=item.post_text
+
+            )
+
+            results.append(prediction)
+
+        return {
+
+            "success": True,
+
+            "message": "Batch prediction completed successfully.",
+
+            "data": {
+
+                "total_predictions": len(results),
+
+                "results": results
+
+            }
+
+        }
+
+    except Exception as e:
+
+        raise EduAIException(str(e))
