@@ -1,7 +1,7 @@
 import psycopg2
 from config.db_connection import get_connection
 
-def start_quiz(student_id, job_role_id):
+def start_quiz(user_id, domain_role_id):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -9,9 +9,9 @@ def start_quiz(student_id, job_role_id):
     try:
 
         cursor.execute("""
-            INSERT INTO quiz_sessions(
-                student_id,
-                job_role_id,
+            INSERT INTO education.quiz_sessions(
+                user_id,
+                domain_role_id,
                 start_time,
                 status,
                 total_questions,
@@ -26,7 +26,7 @@ def start_quiz(student_id, job_role_id):
                 0
             )
             RETURNING session_id;
-        """, (student_id, job_role_id))
+        """, (user_id, domain_role_id))
 
         session_id = cursor.fetchone()[0]
 
@@ -39,29 +39,103 @@ def start_quiz(student_id, job_role_id):
         conn.close()
         
         
-def start_skill(session_id, skill_id):
 
-    return {
-        "session_id": session_id,
-        "skill_id": skill_id,
-        "current_difficulty": 1,
-        "correct_streak": 0,
-        "wrong_streak": 0,
-        "questions_answered": 0,
-        "obtained_score": 0,
-        "maximum_score": 0
-    }
-       
-def get_next_question(session_id, skill_id, difficulty_id):
+def start_skill(session_id, skill_id):
 
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
 
+        # If state already exists (page refresh), return it
+        cursor.execute("""
+            SELECT
+                current_difficulty,
+                correct_streak,
+                wrong_streak,
+                questions_answered,
+                obtained_score,
+                maximum_score
+            FROM education.quiz_state
+            WHERE session_id=%s
+            AND skill_id=%s
+        """, (session_id, skill_id))
+
+        row = cursor.fetchone()
+
+        if row:
+
+            return {
+                "session_id": session_id,
+                "skill_id": skill_id,
+                "current_difficulty": row[0],
+                "correct_streak": row[1],
+                "wrong_streak": row[2],
+                "questions_answered": row[3],
+                "obtained_score": row[4],
+                "maximum_score": row[5]
+            }
+
+        # Create initial state
+        cursor.execute("""
+            INSERT INTO education.quiz_state(
+                session_id,
+                skill_id,
+                current_difficulty,
+                correct_streak,
+                wrong_streak,
+                questions_answered,
+                obtained_score,
+                maximum_score
+            )
+            VALUES (%s,%s,1,0,0,0,0,0)
+        """, (session_id, skill_id))
+
+        conn.commit()
+
+        return {
+            "session_id": session_id,
+            "skill_id": skill_id,
+            "current_difficulty": 1,
+            "correct_streak": 0,
+            "wrong_streak": 0,
+            "questions_answered": 0,
+            "obtained_score": 0,
+            "maximum_score": 0
+        }
+
+    finally:
+        cursor.close()
+        conn.close()
+       
+def get_next_question(session_id, skill_id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    
+    cursor.execute("""
+    SELECT
+    current_difficulty,
+    questions_answered
+    FROM education.quiz_state
+    WHERE session_id = %s
+    AND skill_id = %s
+    """, (session_id, skill_id))
+    row = cursor.fetchone()
+    if row is None:
+        return None
+    difficulty_id = row[0]
+    questions_answered = row[1]
+    # Stop after 10 questions for this skill
+    if questions_answered >= 10:
+        return None
+
+    try:
+
         cursor.execute("""
             SELECT question_id
-            FROM student_answers
+            FROM education.student_answers
             WHERE session_id = %s
             AND skill_id = %s
         """, (session_id, skill_id))
@@ -79,7 +153,7 @@ def get_next_question(session_id, skill_id, difficulty_id):
                 option_c,
                 option_d,
                 difficulty_id
-            FROM questions
+            FROM education.questions
             WHERE skill_id = %s
             AND difficulty_id = %s
         """
@@ -109,7 +183,7 @@ def get_next_question(session_id, skill_id, difficulty_id):
                     option_c,
                     option_d,
                     difficulty_id
-                FROM questions
+                FROM education.questions
                 WHERE skill_id = %s
             """
 
@@ -147,77 +221,66 @@ def submit_answer(session_id, skill_id, question_id, selected_option):
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Get correct answer and difficulty
-    cursor.execute("""
-        SELECT correct_option, difficulty_id
-        FROM questions
-        WHERE question_id = %s
-    """, (question_id,))
+    try:
+        cursor.execute("""
+                SELECT correct_option, difficulty_id
+                FROM education.questions
+                WHERE question_id = %s
+            """, (question_id,))
+        row = cursor.fetchone()
+        
+        if row is None:
+            return None
+        
+        correct_option = row[0]
+        difficulty_id = row[1]
+                
+                    # Check correctness
+        is_correct = (selected_option.upper() == correct_option)
+                
+        marks_awarded = difficulty_id if is_correct else 0
+                
+                    # Save student's answer
+        cursor.execute("""
+                        INSERT INTO education.student_answers(
+                            session_id,
+                            skill_id,
+                            question_id,
+                            difficulty_id,
+                            selected_option,
+                            correct_option,
+                            is_correct,
+                            marks_awarded
+                        )
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        session_id,
+                        skill_id,
+                        question_id,
+                        difficulty_id,
+                        selected_option.upper(),
+                        correct_option,
+                        is_correct,
+                        marks_awarded
+                    ))
 
-    row = cursor.fetchone()
+        conn.commit()
+        return {
+            "is_correct": is_correct,
+            "marks_awarded": marks_awarded,
+            "difficulty_id": difficulty_id
+        }
+    except Exception as e:
 
-    if row is None:
+        conn.rollback()
+        print(e)
+        return None
+    finally:
         cursor.close()
         conn.close()
-        return None
-
-    correct_option = row[0]
-    difficulty_id = row[1]
-
-    # Check correctness
-    is_correct = (selected_option.upper() == correct_option)
-
-    # Assign marks
-    if is_correct:
-        if difficulty_id == 1:
-            marks_awarded = 1
-        elif difficulty_id == 2:
-            marks_awarded = 2
-        elif difficulty_id == 3:
-            marks_awarded = 3
-        else:
-            marks_awarded = 0
-    else:
-        marks_awarded = 0
-
-    # Save student's answer
-    cursor.execute("""
-        INSERT INTO student_answers(
-            session_id,
-            skill_id,
-            question_id,
-            difficulty_id,
-            selected_option,
-            correct_option,
-            is_correct,
-            marks_awarded
-        )
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-    """,
-    (
-        session_id,
-        skill_id,
-        question_id,
-        difficulty_id,
-        selected_option.upper(),
-        correct_option,
-        is_correct,
-        marks_awarded
-    ))
-
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    return {
-        "is_correct": is_correct,
-        "marks_awarded": marks_awarded,
-        "difficulty_id": difficulty_id
-    }
     
     
-from config.db_connection import get_connection
 
 
 def update_difficulty(state, result):
@@ -285,24 +348,47 @@ def update_difficulty(state, result):
             state["current_difficulty"] = 1
             state["wrong_streak"] = 0
 
-    # -------------------------
-    # Update quiz progress in database
-    # -------------------------
+    
+    
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
         cursor.execute("""
-        UPDATE quiz_sessions
-        SET questions_answered = questions_answered + 1
-        WHERE session_id = %s
-        """, (state["session_id"],))
-
+                UPDATE education.quiz_sessions
+                SET questions_answered = questions_answered + 1
+                WHERE session_id = %s
+            """, (state["session_id"],))
+        
+            # Save adaptive state
+        cursor.execute("""
+                UPDATE education.quiz_state
+                SET
+                    current_difficulty = %s,
+                    correct_streak = %s,
+                    wrong_streak = %s,
+                    questions_answered = %s,
+                    obtained_score = %s,
+                    maximum_score = %s
+                WHERE
+                    session_id = %s
+                AND skill_id = %s
+            """, (
+                state["current_difficulty"],
+                state["correct_streak"],
+                state["wrong_streak"],
+                state["questions_answered"],
+                state["obtained_score"],
+                state["maximum_score"],
+                state["session_id"],
+                state["skill_id"]
+            ))
+        
         conn.commit()
-
     except Exception as e:
+
         conn.rollback()
-        print("Error updating quiz progress:", e)
+        print("Error updating quiz state:", e)
 
     finally:
         cursor.close()
@@ -312,17 +398,10 @@ def update_difficulty(state, result):
 
 
 
-def calculate_skill_score(session_id, state):
+def calculate_skill_score(session_id, skill_id):
     """
-    Calculate the final skill score, save it to the database,
-    and mark the quiz session as completed.
-
-    Parameters:
-        session_id : Quiz session ID
-        state      : Skill assessment state
-
-    Returns:
-        Dictionary containing the final results.
+    Calculate the final skill score from quiz_state,
+    save it to student_skill_results, and return the result.
     """
 
     conn = get_connection()
@@ -330,10 +409,32 @@ def calculate_skill_score(session_id, state):
 
     try:
 
-        obtained_score = state["obtained_score"]
-        maximum_score = state["maximum_score"]
+        # --------------------------------------------
+        # Get adaptive quiz state from database
+        # --------------------------------------------
+        cursor.execute("""
+            SELECT
+                questions_answered,
+                obtained_score,
+                maximum_score
+            FROM education.quiz_state
+            WHERE session_id = %s
+            AND skill_id = %s
+        """, (session_id, skill_id))
 
+        row = cursor.fetchone()
+
+        if row is None:
+            print("Quiz state not found.")
+            return None
+
+        questions_answered = row[0]
+        obtained_score = row[1]
+        maximum_score = row[2]
+
+        # --------------------------------------------
         # Calculate percentage
+        # --------------------------------------------
         if maximum_score == 0:
             percentage = 0
         else:
@@ -342,7 +443,9 @@ def calculate_skill_score(session_id, state):
                 2
             )
 
-        # Determine skill level
+        # --------------------------------------------
+        # Determine Skill Level
+        # --------------------------------------------
         if percentage >= 90:
             skill_level = 5
         elif percentage >= 70:
@@ -354,9 +457,20 @@ def calculate_skill_score(session_id, state):
         else:
             skill_level = 1
 
-        # Save skill result
+        # --------------------------------------------
+        # Remove previous result (if exists)
+        # --------------------------------------------
         cursor.execute("""
-            INSERT INTO student_skill_results (
+            DELETE FROM education.student_skill_results
+            WHERE session_id = %s
+            AND skill_id = %s
+        """, (session_id, skill_id))
+
+        # --------------------------------------------
+        # Save final skill result
+        # --------------------------------------------
+        cursor.execute("""
+            INSERT INTO education.student_skill_results(
                 session_id,
                 skill_id,
                 obtained_score,
@@ -364,24 +478,22 @@ def calculate_skill_score(session_id, state):
                 percentage,
                 skill_level
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES(%s,%s,%s,%s,%s,%s)
         """, (
             session_id,
-            state["skill_id"],
+            skill_id,
             obtained_score,
             maximum_score,
             percentage,
             skill_level
         ))
 
-
-        # Commit both queries
         conn.commit()
 
         return {
             "session_id": session_id,
-            "skill_id": state["skill_id"],
-            "questions_answered": state["questions_answered"],
+            "skill_id": skill_id,
+            "questions_answered": questions_answered,
             "obtained_score": obtained_score,
             "maximum_score": maximum_score,
             "percentage": percentage,
@@ -390,11 +502,13 @@ def calculate_skill_score(session_id, state):
         }
 
     except Exception as e:
+
         conn.rollback()
         print("Error calculating skill score:", e)
         return None
 
     finally:
+
         cursor.close()
         conn.close()
 
@@ -410,7 +524,7 @@ def finish_quiz(session_id):
     try:
 
         cursor.execute("""
-            UPDATE quiz_sessions
+            UPDATE education.quiz_sessions
             SET
                 status='Completed',
                 end_time=CURRENT_TIMESTAMP

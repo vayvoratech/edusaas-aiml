@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EduSaaS Assessment</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <h1>EduSaaS Skill Assessment</h1>
+
+            <form action="{{ url_for('home.start') }}" method="POST">
+
+    <label>Full Name</label>
+    <input
+        type="text"
+        name="full_name"
+        required>
+
+    <label>Email</label>
+    <input
+        type="email"
+        name="email"
+        required>
+
+    <label>Target Job Role</label>
+
+    <select name="domain_role_id" required>
+
+        {% for job in domain_roles %}
+
+        <option value="{{ job[0] }}">
+    {{ job[1] }}
+</option>
+
+        {% endfor %}
+
+    </select>
+
+    <br>
+
+    <button type="submit" class="btn btn-primary">
+        Start Assessment
+    </button>
+
+</form>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

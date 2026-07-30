@@ -1,0 +1,183 @@
+/* ==========================================
+   EduSaaS - Professional Assessment UI
+========================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    background:#f4f6f9;
+    color:#333;
+}
+
+/* Container */
+
+.container{
+    width:100%;
+    max-width:900px;
+    margin:40px auto;
+    padding:20px;
+}
+
+/* Quiz Card */
+
+.quiz-card{
+    background:#fff;
+    border-radius:12px;
+    padding:35px;
+    box-shadow:0 8px 25px rgba(0,0,0,.08);
+}
+
+/* Header */
+
+.header{
+    text-align:center;
+    margin-bottom:30px;
+}
+
+.header h2{
+    color:#0d6efd;
+    margin-bottom:10px;
+}
+
+#skill-name{
+    color:#198754;
+    margin-bottom:10px;
+}
+
+.question-count{
+    font-size:18px;
+    color:#666;
+}
+
+/* Question */
+
+.question{
+    margin:30px 0;
+}
+
+#question-text{
+    font-size:24px;
+    line-height:1.6;
+}
+
+/* Options */
+
+.option{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    padding:18px;
+    margin-bottom:18px;
+    background:#f8f9fa;
+    border:2px solid #ddd;
+    border-radius:10px;
+    cursor:pointer;
+    transition:.25s;
+}
+
+.option:hover{
+    border-color:#0d6efd;
+    background:#eef5ff;
+}
+
+.option input{
+    transform:scale(1.3);
+    cursor:pointer;
+}
+
+.option span{
+    font-size:17px;
+}
+
+/* Button */
+
+.btn{
+    width:100%;
+    padding:15px;
+    margin-top:20px;
+    border:none;
+    border-radius:10px;
+    background:#0d6efd;
+    color:white;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.btn:hover{
+    background:#0b5ed7;
+}
+
+/* ---------- Dashboard ---------- */
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:25px;
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+    margin-bottom:20px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th{
+    background:#0d6efd;
+    color:white;
+    padding:12px;
+}
+
+td{
+    padding:12px;
+    border-bottom:1px solid #ddd;
+}
+
+tr:hover{
+    background:#f7f7f7;
+}
+
+.readiness-score{
+    font-size:60px;
+    font-weight:bold;
+    color:#198754;
+    text-align:center;
+}
+
+canvas{
+    width:100% !important;
+    max-height:400px;
+}
+
+/* Responsive */
+
+@media(max-width:768px){
+
+    .container{
+        padding:15px;
+    }
+
+    .quiz-card{
+        padding:25px;
+    }
+
+    #question-text{
+        font-size:20px;
+    }
+
+    .option{
+        padding:15px;
+    }
+
+    .btn{
+        font-size:16px;
+    }
+
+}

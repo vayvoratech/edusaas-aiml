@@ -1,7 +1,7 @@
 from config.db_connection import get_connection
 
 
-def generate_skill_gap(session_id, job_role_id):
+def generate_skill_gap(session_id, domain_role_id):
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -16,13 +16,13 @@ def generate_skill_gap(session_id, job_role_id):
             SELECT
                 s.skill_id,
                 s.skill_name,
-                jrs.required_level
-            FROM job_required_skills jrs
-            JOIN skill s
-                ON s.skill_id = jrs.skill_id
-            WHERE jrs.job_role_id = %s
+                drs.required_level
+            FROM education.domain_required_skills drs
+            JOIN education.skills s
+                ON s.skill_id = drs.skill_id
+            WHERE drs.domain_role_id = %s
             ORDER BY s.skill_name
-        """, (job_role_id,))
+        """, (domain_role_id,))
 
         required_skills = cursor.fetchall()
 
@@ -45,7 +45,7 @@ def generate_skill_gap(session_id, job_role_id):
 
             cursor.execute("""
                 SELECT skill_level
-                FROM student_skill_results
+                FROM education.student_skill_results
                 WHERE session_id = %s
                 AND skill_id = %s
             """, (
@@ -122,7 +122,7 @@ def generate_skill_gap(session_id, job_role_id):
 
             "session_id": session_id,
 
-            "job_role_id": job_role_id,
+            "domain_role_id": domain_role_id,
 
             "readiness_score": readiness,
 

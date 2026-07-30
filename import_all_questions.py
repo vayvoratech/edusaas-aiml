@@ -7,7 +7,7 @@ import psycopg2
 # ==========================
 conn = psycopg2.connect(
     host="localhost",
-    database="Gap_Analysis",
+    database="Vayvora_database",
     user="postgres",
     password="Postgres2928@@",
     port="5432"
@@ -47,7 +47,7 @@ for filename in os.listdir(QUESTION_FOLDER):
             # -----------------------------------
             cursor.execute("""
                 SELECT skill_id
-                FROM skill
+                FROM education.skills
                 WHERE LOWER(skill_name)=LOWER(%s)
             """, (row["skill_name"],))
 
@@ -64,7 +64,7 @@ for filename in os.listdir(QUESTION_FOLDER):
             # -----------------------------------
             cursor.execute("""
                 SELECT difficulty_id
-                FROM difficulty_levels
+                FROM education.difficulty_levels
                 WHERE LOWER(difficulty_name)=LOWER(%s)
             """, (row["difficulty"],))
 
@@ -81,7 +81,7 @@ for filename in os.listdir(QUESTION_FOLDER):
             # -----------------------------------
             cursor.execute("""
                 SELECT 1
-                FROM questions
+                FROM education.questions
                 WHERE question_text=%s
                 AND skill_id=%s
             """, (
@@ -98,7 +98,7 @@ for filename in os.listdir(QUESTION_FOLDER):
             # Insert Question
             # -----------------------------------
             cursor.execute("""
-                INSERT INTO questions
+                INSERT INTO education.questions
                 (
                     skill_id,
                     difficulty_id,
@@ -108,14 +108,13 @@ for filename in os.listdir(QUESTION_FOLDER):
                     option_c,
                     option_d,
                     correct_option,
-                    explanation,
                     marks,
                     is_active
                 )
                 VALUES
                 (
                     %s,%s,%s,
-                    %s,%s,%s,%s,
+                    %s,%s,%s,
                     %s,%s,%s,%s
                 )
             """, (
@@ -131,8 +130,6 @@ for filename in os.listdir(QUESTION_FOLDER):
                 row["option_d"],
 
                 row["correct_option"],
-
-                row["explanation"],
 
                 int(row["marks"]),
 

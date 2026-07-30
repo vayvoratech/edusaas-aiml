@@ -8,13 +8,13 @@ class RecommendationEngine:
         self.cursor = self.conn.cursor()
 
     # -----------------------------------------------------
-    # Get Job Role from Quiz Session
+    # Get Domain Role from Quiz Session
     # -----------------------------------------------------
     def get_job_role(self, session_id):
 
         query = """
-        SELECT job_role_id
-        FROM quiz_sessions
+        SELECT domain_role_id
+        FROM education.quiz_sessions
         WHERE session_id = %s
         """
 
@@ -29,15 +29,15 @@ class RecommendationEngine:
     # -----------------------------------------------------
     # Get Required Skills
     # -----------------------------------------------------
-    def get_job_required_skills(self, job_role_id):
+    def get_job_required_skills(self, domain_role_id):
 
         query = """
         SELECT skill_id, required_level
-        FROM job_required_skills
-        WHERE job_role_id = %s
+        FROM education.domain_required_skills
+        WHERE domain_role_id = %s
         """
 
-        self.cursor.execute(query, (job_role_id,))
+        self.cursor.execute(query, (domain_role_id,))
         return self.cursor.fetchall()
 
     # -----------------------------------------------------
@@ -47,7 +47,7 @@ class RecommendationEngine:
 
         query = """
         SELECT skill_id, skill_level
-        FROM student_skill_results
+        FROM education.student_skill_results
         WHERE session_id = %s
         """
 
@@ -59,9 +59,9 @@ class RecommendationEngine:
     # -----------------------------------------------------
     def find_skill_gaps(self, session_id):
 
-        job_role_id = self.get_job_role(session_id)
+        domain_role_id = self.get_job_role(session_id)
 
-        required_skills = self.get_job_required_skills(job_role_id)
+        required_skills = self.get_job_required_skills(domain_role_id)
         student_skills = self.get_student_skills(session_id)
 
         gaps = []
@@ -95,10 +95,10 @@ class RecommendationEngine:
                     c.difficulty,
                     cs.coverage_level,
                     s.skill_name
-                FROM course_skills cs
-                JOIN courses c
+                FROM education.course_skills cs
+                JOIN education.courses c
                     ON c.course_id = cs.course_id
-                JOIN skill s
+                JOIN education.skills s
                     ON s.skill_id = cs.skill_id
                 WHERE cs.skill_id = %s
                 ORDER BY
@@ -147,8 +147,8 @@ class RecommendationEngine:
                         c.rating,
                         c.difficulty,
                         cs.coverage_level
-                    FROM course_skills cs
-                    JOIN courses c
+                    FROM education.course_skills cs
+                    JOIN education.courses c
                         ON c.course_id = cs.course_id
                     WHERE cs.skill_id = %s
                     """
