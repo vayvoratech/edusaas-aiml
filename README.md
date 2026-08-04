@@ -117,6 +117,58 @@ Adaptive_Quiz/
 
 ---
 
+# Complete Call Chain
+
+```text
+Student
+   │
+   ▼
+server.js
+   │
+   ▼
+routes/quiz.js
+   │
+   ▼
+quizController.js
+   │
+   ├──────────────► db.js
+   │                   │
+   │                   ▼
+   │              PostgreSQL
+   │
+   └──────────────► pythonService.js
+                        │
+                        ▼
+                  HTTP Request
+                        │
+                        ▼
+                    app.py
+                        │
+                        ▼
+                 routes/quiz.py
+                        │
+                        ▼
+              adaptive_engine.py
+                        │
+                        ▼
+                 Adaptive Logic
+                        │
+                        ▼
+                 routes/quiz.py
+                        │
+                        ▼
+                pythonService.js
+                        │
+                        ▼
+                quizController.js
+                        │
+                        ▼
+                  PostgreSQL
+                        │
+                        ▼
+                    Frontend
+---
+
 # Database Modules
 
 - Users
