@@ -1,18 +1,17 @@
 from flask import Flask
+from routes.quiz import quiz_bp
 
 app = Flask(__name__)
 
-# Secret key (required for Flask sessions)
-app.secret_key = "edusaas_secret_key"
+app.register_blueprint(
+    quiz_bp,
+    url_prefix="/api/quiz"
+)
 
-# Register Routes
-from routes.home import home_bp
-from routes.quiz import quiz_bp
-from routes.dashboard import dashboard_bp
+print("\nRegistered Routes")
 
-app.register_blueprint(home_bp)
-app.register_blueprint(quiz_bp)
-app.register_blueprint(dashboard_bp)
+for rule in app.url_map.iter_rules():
+    print(rule)
 
 if __name__ == "__main__":
     app.run(debug=True)

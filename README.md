@@ -1,135 +1,225 @@
-# EduSaaS – Adaptive Skill Assessment Platform
+# EduSaaS – AI-Powered Adaptive Skill Assessment Platform
 
 ## Overview
 
-EduSaaS is an AI-powered adaptive skill assessment platform designed to evaluate a student's technical skills based on their selected job role. The system conducts an adaptive quiz, identifies skill gaps, and recommends personalized learning paths.
+EduSaaS is an AI-powered adaptive skill assessment platform developed by **Vayvora Technologies Pvt. Ltd.** It evaluates a student's technical skills based on their selected job role using an adaptive assessment algorithm.
 
-The project is built using Flask and PostgreSQL and follows a modular architecture for scalability.
+The platform combines **Node.js**, **Python (Flask)**, and **PostgreSQL** to deliver scalable, intelligent assessments. Node.js manages the business logic and database operations, while Python serves as a stateless AI engine responsible for adaptive question selection and difficulty adjustment.
 
 ---
 
-## Features
+# Features
 
 - User Registration
 - Job Role Selection
-- Adaptive Quiz Engine
+- AI-Powered Adaptive Quiz
+- Dynamic Difficulty Adjustment
 - Skill-wise Assessment
-- Difficulty Level Adjustment
 - Skill Gap Analysis
-- Personalized Course Recommendation
+- Personalized Learning Recommendations
+- RESTful APIs
 - PostgreSQL Database
-- REST API using Flask
+- Modular Microservice Architecture
 
 ---
 
-## Technology Stack
+# Technology Stack
 
-### Backend
+## Backend
+
+- Node.js
+- Express.js
 - Python 3.x
 - Flask
 
-### Database
+## Database
+
 - PostgreSQL
 
-### Frontend
-- HTML
-- CSS
-- Jinja2 Templates
+## AI Engine
 
-### Version Control
+- Adaptive Difficulty Algorithm
+- Skill Score Calculation
+- Dynamic Question Selection
+
+## Version Control
+
 - Git
 - GitHub
 
 ---
 
-## Project Structure
+# System Architecture
 
 ```
-EduSaaS/
+                Frontend
+                    │
+                    ▼
+          Node.js (Express API)
+                    │
+        ┌───────────┴────────────┐
+        │                        │
+        ▼                        ▼
+ PostgreSQL Database      Python Flask API
+                                │
+                                ▼
+                      Adaptive Quiz Engine
+```
+
+Node.js is responsible for:
+
+- Business Logic
+- Database Operations
+- Quiz Session Management
+- API Endpoints
+
+Python is responsible for:
+
+- Adaptive Question Selection
+- Difficulty Adjustment
+- Skill Score Calculation
+- Adaptive Quiz Engine
+
+---
+
+# Project Structure
+
+```
+Adaptive_Quiz/
 │
 ├── app.py
-├── main.py
-├── config/
-│   ├── db_connection.py
-│   └── settings.py
+├── requirements.txt
+├── README.md
+├── .gitignore
 │
 ├── routes/
-│   ├── home.py
 │   └── quiz.py
 │
 ├── services/
 │   └── adaptive_engine.py
 │
-├── templates/
-│   ├── index.html
-│   └── quiz.html
+├── backend/
+│   ├── server.js
+│   ├── package.json
+│   ├── config/
+│   │   └── db.js
+│   ├── controllers/
+│   │   └── quizController.js
+│   ├── routes/
+│   │   └── quiz.js
+│   ├── services/
+│   │   └── pythonService.js
+│   └── .env
 │
-├── static/
-│   └── css/
-│       └── style.css
-│
-├── question_bank/
-│   ├── python_questions.csv
-│   ├── sql_questions.csv
-│   ├── machine_learning_questions.csv
-│   ├── deep_learning_questions.csv
-│   └── git_questions.csv
-│
-├── database/
-│   └── schema.sql
-│
-├── requirements.txt
-├── README.md
-└── .gitignore
+├── uploads/
+└── question_bank/
 ```
 
 ---
 
-## Database Modules
+# Database Modules
 
 - Users
 - Domain Roles
 - Skills
 - Domain Required Skills
-- Questions
 - Difficulty Levels
+- Questions
 - Quiz Sessions
-- Student Answers
+- Quiz State
 - Student Skill Results
 
 ---
 
-## Adaptive Quiz Flow
+# Adaptive Quiz Workflow
 
-1. Student enters name and email.
-2. Student selects a target job role.
-3. A quiz session is created.
-4. Required skills for the selected role are loaded.
-5. Questions begin at Easy difficulty.
-6. Difficulty changes dynamically based on performance.
-7. Skill scores are calculated.
-8. Skill gaps are identified.
-9. Learning recommendations are generated.
+```
+Student
+    │
+    ▼
+Select Job Role
+    │
+    ▼
+Create Quiz Session
+    │
+    ▼
+Load Required Skills
+    │
+    ▼
+Python Creates Adaptive State
+    │
+    ▼
+Question Starts at Easy Level
+    │
+    ▼
+Student Answers Question
+    │
+    ▼
+Difficulty Updated
+    │
+    ▼
+Next Question Selected
+    │
+    ▼
+Skill Completed
+    │
+    ▼
+Skill Score Calculated
+    │
+    ▼
+Next Skill
+    │
+    ▼
+Assessment Completed
+```
 
 ---
 
-## Installation
+# Difficulty Adaptation Logic
 
-### Clone Repository
+- Assessment starts at **Easy** difficulty.
+- Two consecutive correct answers increase the difficulty.
+- Two consecutive incorrect answers decrease the difficulty.
+- Maximum of **10 questions per skill**.
+- Marks are awarded based on question difficulty.
+
+| Difficulty | Marks |
+|------------|------:|
+| Easy | 1 |
+| Medium | 2 |
+| Hard | 3 |
+
+---
+
+# Skill Level Calculation
+
+| Percentage | Skill Level |
+|------------|------------:|
+| 90–100 | 5 |
+| 70–89 | 4 |
+| 50–69 | 3 |
+| 25–49 | 2 |
+| 0–24 | 1 |
+
+---
+
+# Installation
+
+## Clone Repository
 
 ```bash
-git clone https://github.com/<your-username>/edusaas.git
+git clone https://github.com/vayvoratech/edusaas-aiml.git
 ```
 
-### Move into Project
-
-```bash
-cd edusaas
+```
+cd edusaas-aiml
 ```
 
-### Create Virtual Environment
+---
 
-Windows
+# Python Setup
+
+Create Virtual Environment
 
 ```bash
 python -m venv venv
@@ -137,20 +227,19 @@ python -m venv venv
 
 Activate
 
+Windows
+
 ```bash
 venv\Scripts\activate
 ```
 
-Linux/Mac
+Linux / macOS
 
 ```bash
-python3 -m venv venv
 source venv/bin/activate
 ```
 
----
-
-## Install Dependencies
+Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -158,40 +247,114 @@ pip install -r requirements.txt
 
 ---
 
-## Configure Database
+# Node.js Setup
 
-Create a PostgreSQL database and execute your SQL schema.
+Move into backend
 
-Update the database configuration in:
-
+```bash
+cd backend
 ```
-config/settings.py
+
+Install dependencies
+
+```bash
+npm install
 ```
 
 ---
 
-## Run the Application
+# Configure Environment
+
+Create a `.env` file inside the `backend` directory.
+
+Example:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=your_database
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+PYTHON_API=http://127.0.0.1:5000/api/quiz
+PORT=3000
+```
+
+---
+
+# Run the Project
+
+### Start Python AI Engine
 
 ```bash
 python app.py
 ```
 
-or
+Runs on:
 
-```bash
-flask run
+```
+http://127.0.0.1:5000
 ```
 
 ---
 
-## Future Enhancements
+### Start Node.js Backend
 
-- JWT Authentication
-- Admin Dashboard
-- Student Dashboard
-- AI-based Course Recommendation
-- Performance Analytics
-- Assignment Evaluation
-- Certificate Generation
+```bash
+cd backend
+npm start
+```
+
+Runs on:
+
+```
+http://localhost:3000
+```
 
 ---
+
+# API Endpoints
+
+## Start Assessment
+
+```
+POST /api/quiz/start
+```
+
+---
+
+## Submit Answer
+
+```
+POST /api/quiz/submit-answer
+```
+
+---
+
+## Finish Assessment
+
+```
+POST /api/quiz/finish
+```
+
+---
+
+# Future Enhancements
+
+- JWT Authentication
+- Student Dashboard
+- Admin Dashboard
+- AI Course Recommendation
+- Skill Gap Analytics
+- Performance Prediction
+- Assignment Evaluation
+- Certificate Generation
+- Learning Path Recommendation
+
+---
+
+# Developed By
+
+**Vayvora Technologies Pvt. Ltd.**
+
+AI • Enterprise SaaS • EdTech

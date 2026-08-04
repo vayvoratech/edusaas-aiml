@@ -1,228 +1,196 @@
-from flask import Blueprint, render_template, request, jsonify, session
-
-from adaptive_engine import (
-    get_next_question,
-    submit_answer,
-    update_difficulty,
-    calculate_skill_score,
-    finish_quiz,
-    start_skill
-)
-
-from config.db_connection import get_connection
+from flask import Blueprint, request, jsonify
+from services.adaptive_engine import AdaptiveEngine
 
 quiz_bp = Blueprint("quiz", __name__)
 
+engine = AdaptiveEngine()
+
 
 # ----------------------------------------------------
-# Start Quiz
+# Create Quiz State
 # ----------------------------------------------------
-@quiz_bp.route("/quiz/<int:session_id>")
-def quiz(session_id):
+@quiz_bp.route("/create-state", methods=["POST"])
+def create_state():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    data = request.get_json()
 
-    try:
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "Request body is required."
+        }), 400
 
-        cursor.execute("""
-            SELECT drs.skill_id, s.skill_name
-            FROM education.domain_required_skills drs
-            JOIN education.skills s
-                ON drs.skill_id = s.skill_id
-            WHERE drs.domain_role_id = (
-                SELECT domain_role_id
-                FROM education.quiz_sessions
-                WHERE session_id=%s
-            )
-            ORDER BY drs.skill_id
-            LIMIT 1
-        """, (session_id,))
+    if "session_id" not in data or "skill" not in data:
+        return jsonify({
+            "success": False,
+            "message": "session_id and skill are required."
+        }), 400
 
-        row = cursor.fetchone()
+    state = engine.create_quiz_state(
+        data["session_id"],
+        data["skill"]
+    )
 
-        skill_id = row[0]
-        skill_name = row[1]
+    return jsonify({
+        "success": True,
+        "state": state
+    })
 
-        session["session_id"] = session_id
-        session["skill_id"] = skill_id
 
-        start_skill(session_id, skill_id)
+# ----------------------------------------------------
+# Get Next Question
+# ----------------------------------------------------
+@quiz_bp.route("/next-question", methods=["POST"])
+def next_question():
 
-        question = get_next_question(session_id, skill_id)
+    data = request.get_json()
 
-        return render_template(
-            "quiz.html",
-            question=question,
-            skill_name=skill_name,
-            question_number=1
-        )
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "Request body is required."
+        }), 400
 
-    finally:
-        cursor.close()
-        conn.close()
+    if "state" not in data or "questions" not in data:
+        return jsonify({
+            "success": False,
+            "message": "state and questions are required."
+        }), 400
+
+    question = engine.get_next_question(
+        data["state"],
+        data["questions"]
+    )
+
+    return jsonify({
+        "success": True,
+        "question": question
+    })
 
 
 # ----------------------------------------------------
 # Submit Answer
 # ----------------------------------------------------
-@quiz_bp.route("/submit_answer", methods=["POST"])
-def submit():
+@quiz_bp.route("/submit-answer", methods=["POST"])
+def submit_answer():
 
     data = request.get_json()
 
-    session_id = session["session_id"]
-    skill_id = session["skill_id"]
+    if not data:
+        return jsonify({
+            "success": False,
+            "message": "Request body is required."
+        }), 400
 
-    result = submit_answer(
-        session_id,
-        skill_id,
-        data["question_id"],
-        data["answer"]
+    required = [
+        "state",
+        "question",
+        "selected_option"
+    ]
+
+    for field in required:
+
+        if field not in data:
+
+            return jsonify({
+                "success": False,
+                "message": f"{field} is required."
+            }), 400
+
+    result = engine.submit_answer(
+        data["state"],
+        data["question"],
+        data["selected_option"]
     )
 
-    state = start_skill(session_id, skill_id)
-    state = update_difficulty(state, result)
-
-    # Skill completed
-    if state["questions_answered"] >= 10:
-
-        calculate_skill_score(session_id, skill_id)
-
     return jsonify({
-        "completed": state["questions_answered"] >= 10
+        "success": True,
+        "result": result
     })
 
 
 # ----------------------------------------------------
-# Next Question
+# Calculate Skill Score
 # ----------------------------------------------------
-@quiz_bp.route("/next_question")
-def next_question():
+@quiz_bp.route("/calculate-score", methods=["POST"])
+def calculate_score():
 
-    session_id = session["session_id"]
-    skill_id = session["skill_id"]
+    data = request.get_json()
 
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    try:
-
-        state = start_skill(session_id, skill_id)
-
-        # --------------------------------------------------
-        # Current skill finished?
-        # --------------------------------------------------
-        if state["questions_answered"] >= 10:
-
-            cursor.execute("""
-                SELECT drs.skill_id, s.skill_name
-                FROM education.domain_required_skills drs
-                JOIN education.skills s
-                    ON drs.skill_id = s.skill_id
-                WHERE drs.domain_role_id = (
-                    SELECT domain_role_id
-                    FROM education.quiz_sessions
-                    WHERE session_id=%s
-                )
-                ORDER BY drs.skill_id
-            """,(session_id,))
-
-            skills = cursor.fetchall()
-
-            ids = [row[0] for row in skills]
-
-            current = ids.index(skill_id)
-
-            # -------------------------
-            # Last Skill
-            # -------------------------
-            if current == len(ids)-1:
-
-                finish_quiz(session_id)
-
-                return jsonify({
-
-                    "completed": True,
-
-                    "redirect": f"/dashboard/{session_id}"
-
-                })
-
-            # -------------------------
-            # Next Skill
-            # -------------------------
-
-            next_skill = skills[current+1]
-
-            session["skill_id"] = next_skill[0]
-
-            state = start_skill(
-                session_id,
-                next_skill[0]
-            )
-
-            question = get_next_question(
-                session_id,
-                next_skill[0]
-            )
-
-            return jsonify({
-
-                "completed": False,
-
-                "new_skill": True,
-
-                "skill_name": next_skill[1],
-
-                "question_number": 1,
-
-                "question_id": question["question_id"],
-
-                "question_text": question["question_text"],
-
-                "option_a": question["option_a"],
-
-                "option_b": question["option_b"],
-
-                "option_c": question["option_c"],
-
-                "option_d": question["option_d"]
-
-            })
-
-        # --------------------------------------------------
-        # Same Skill
-        # --------------------------------------------------
-
-        question = get_next_question(
-            session_id,
-            skill_id
-        )
+    if not data or "state" not in data:
 
         return jsonify({
+            "success": False,
+            "message": "state is required."
+        }), 400
 
-            "completed": False,
+    result = engine.calculate_skill_score(
+        data["state"]
+    )
 
-            "new_skill": False,
+    return jsonify({
+        "success": True,
+        "result": result
+    })
 
-            "question_number": state["questions_answered"] + 1,
 
-            "question_id": question["question_id"],
+# ----------------------------------------------------
+# Get Next Skill
+# ----------------------------------------------------
+@quiz_bp.route("/next-skill", methods=["POST"])
+def next_skill():
 
-            "question_text": question["question_text"],
+    data = request.get_json()
 
-            "option_a": question["option_a"],
+    if not data:
 
-            "option_b": question["option_b"],
+        return jsonify({
+            "success": False,
+            "message": "Request body is required."
+        }), 400
 
-            "option_c": question["option_c"],
+    if (
+        "skills" not in data
+        or
+        "current_skill_index" not in data
+    ):
 
-            "option_d": question["option_d"]
+        return jsonify({
+            "success": False,
+            "message": "skills and current_skill_index are required."
+        }), 400
 
-        })
+    result = engine.get_next_skill(
+        data["skills"],
+        data["current_skill_index"]
+    )
 
-    finally:
+    return jsonify({
+        "success": True,
+        "result": result
+    })
 
-        cursor.close()
-        conn.close()
+
+# ----------------------------------------------------
+# Finish Quiz
+# ----------------------------------------------------
+@quiz_bp.route("/finish", methods=["POST"])
+def finish_quiz():
+
+    data = request.get_json()
+
+    if not data or "state" not in data:
+
+        return jsonify({
+            "success": False,
+            "message": "state is required."
+        }), 400
+
+    result = engine.finish_quiz(
+        data["state"]
+    )
+
+    return jsonify({
+        "success": True,
+        "result": result
+    })

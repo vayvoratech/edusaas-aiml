@@ -1,4 +1,327 @@
-import psycopg2
+from copy import deepcopy
+import random
+
+
+class AdaptiveEngine:
+    """
+    Pure Adaptive Quiz Engine.
+
+    This class contains only AI logic.
+    It has no database interaction and no Flask dependencies.
+
+    Node.js is responsible for:
+        - Reading questions from PostgreSQL
+        - Reading quiz state
+        - Saving quiz state
+        - Saving student answers
+        - Saving skill results
+    """
+
+    def __init__(self):
+
+        # Difficulty Levels
+        self.EASY = 1
+        self.MEDIUM = 2
+        self.HARD = 3
+
+        # Questions per skill
+        self.MAX_QUESTIONS = 10
+
+        # Marks for each difficulty
+        self.DIFFICULTY_MARKS = {
+            self.EASY: 1,
+            self.MEDIUM: 2,
+            self.HARD: 3
+        }
+
+    # ----------------------------------------------------
+    # Create Initial Quiz State
+    # ----------------------------------------------------
+    def create_quiz_state(self, session_id: int, skill: dict) -> dict:
+
+        return {
+
+            "session_id": session_id,
+
+            "skill_id": skill["skill_id"],
+
+            "skill_name": skill["skill_name"],
+
+            "current_difficulty": self.EASY,
+
+            "correct_streak": 0,
+
+            "wrong_streak": 0,
+
+            "questions_answered": 0,
+
+            "obtained_score": 0,
+
+            "maximum_score": 0,
+
+            "asked_questions": []
+
+        }
+
+    # ----------------------------------------------------
+    # Update Difficulty
+    # ----------------------------------------------------
+    def update_difficulty(
+        self,
+        state: dict,
+        is_correct: bool
+    ) -> dict:
+
+        state = deepcopy(state)
+
+        if is_correct:
+
+            state["correct_streak"] += 1
+            state["wrong_streak"] = 0
+
+        else:
+
+            state["wrong_streak"] += 1
+            state["correct_streak"] = 0
+
+        # Move Up
+        if (
+            state["correct_streak"] >= 2
+            and state["current_difficulty"] < self.HARD
+        ):
+
+            state["current_difficulty"] += 1
+            state["correct_streak"] = 0
+
+        # Move Down
+        elif (
+            state["wrong_streak"] >= 2
+            and state["current_difficulty"] > self.EASY
+        ):
+
+            state["current_difficulty"] -= 1
+            state["wrong_streak"] = 0
+
+        return state
+
+    # ----------------------------------------------------
+    # Check Skill Completion
+    # ----------------------------------------------------
+    def is_skill_completed(self, state: dict) -> bool:
+
+        return state["questions_answered"] >= self.MAX_QUESTIONS
+
+    # ----------------------------------------------------
+    # Get Next Question
+    # ----------------------------------------------------
+    def get_next_question(
+    self,
+    state: dict,
+    questions: list
+) -> dict | None:
+        difficulty = state["current_difficulty"]
+        asked_questions = set(state["asked_questions"])
+        available_questions = [
+            question
+            for question in questions
+            if (
+                question["difficulty_id"] == difficulty
+                and question["question_id"] not in asked_questions
+            )
+
+        ]
+
+    # If none are available at the current difficulty,
+    # use any remaining unanswered question.
+        if not available_questions:
+            available_questions = [
+                question
+                for question in questions
+                if question["question_id"] not in asked_questions
+
+         ]
+
+        if not available_questions:
+            return None
+
+        return deepcopy(random.choice(available_questions))
+
+    # ----------------------------------------------------
+    # Submit Answer
+    # ----------------------------------------------------
+    def submit_answer(
+        self,
+        state: dict,
+        question: dict,
+        selected_option: str
+    ) -> dict:
+
+        state = deepcopy(state)
+
+        is_correct = (
+
+            selected_option.upper()
+
+            ==
+
+            question["correct_option"].upper()
+
+        )
+
+        marks = self.DIFFICULTY_MARKS[
+            state["current_difficulty"]
+        ]
+
+        state["questions_answered"] += 1
+
+        state["maximum_score"] += marks
+
+        # Add question only once
+        if question["question_id"] not in state["asked_questions"]:
+            state["asked_questions"].append(
+                question["question_id"]
+        )
+
+        if is_correct:
+
+            state["obtained_score"] += marks
+
+        state = self.update_difficulty(
+            state,
+            is_correct
+        )
+
+        return {
+
+            "is_correct": is_correct,
+
+            "marks_awarded": marks if is_correct else 0,
+
+            "current_difficulty": state["current_difficulty"],
+
+            "skill_completed": self.is_skill_completed(state),
+
+            "updated_state": state
+
+        }
+
+    # ----------------------------------------------------
+    # Calculate Skill Score
+    # ----------------------------------------------------
+    def calculate_skill_score(
+        self,
+        state: dict
+    ) -> dict:
+
+        maximum_score = state["maximum_score"]
+
+        obtained_score = state["obtained_score"]
+
+        if maximum_score == 0:
+
+            percentage = 0
+
+        else:
+
+            percentage = round(
+
+                (obtained_score / maximum_score) * 100,
+
+                2
+
+            )
+
+        if percentage >= 90:
+
+            skill_level = 5
+
+        elif percentage >= 70:
+
+            skill_level = 4
+
+        elif percentage >= 50:
+
+            skill_level = 3
+
+        elif percentage >= 25:
+
+            skill_level = 2
+
+        else:
+
+            skill_level = 1
+
+        return {
+
+            "session_id": state["session_id"],
+
+            "skill_id": state["skill_id"],
+
+            "skill_name": state["skill_name"],
+
+            "questions_answered": state["questions_answered"],
+
+            "obtained_score": obtained_score,
+
+            "maximum_score": maximum_score,
+
+            "percentage": percentage,
+
+            "skill_level": skill_level,
+
+            "status": "Completed"
+
+        }
+
+    # ----------------------------------------------------
+    # Get Next Skill
+    # ----------------------------------------------------
+    def get_next_skill(
+        self,
+        skills: list,
+        current_skill_index: int
+    ) -> dict | None:
+
+        next_index = current_skill_index + 1
+
+        if next_index >= len(skills):
+            return None
+
+        return {
+
+            "next_skill_index": next_index,
+
+            "next_skill": skills[next_index]
+
+        }
+
+    # ----------------------------------------------------
+    # Finish Quiz
+    # ----------------------------------------------------
+    def finish_quiz(
+        self,
+        state: dict
+    ) -> dict:
+
+        return {
+
+            "assessment_completed": True,
+
+            "completed_skill": self.calculate_skill_score(
+                state
+            )
+
+        }
+        
+        
+        
+
+
+
+
+
+
+'''import psycopg2
 from config.db_connection import get_connection
 
 def start_quiz(user_id, domain_role_id):
@@ -544,3 +867,4 @@ def finish_quiz(session_id):
 
         cursor.close()
         conn.close()
+        '''
