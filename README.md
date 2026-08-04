@@ -260,7 +260,7 @@ Assessment Completed
 ## Clone Repository
 
 ```bash
-git clone https://github.com/vayvoratech/edusaas-aiml.git
+git clone --branch KiranAiml --single-branch https://github.com/vayvoratech/edusaas-aiml.git
 ```
 
 ```
