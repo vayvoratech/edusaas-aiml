@@ -132,6 +132,58 @@ Adaptive_Quiz/
 
 ---
 
+# Complete Call Chain
+
+```text
+Student
+   │
+   ▼
+server.js
+   │
+   ▼
+routes/quiz.js
+   │
+   ▼
+quizController.js
+   │
+   ├──────────────► db.js
+   │                   │
+   │                   ▼
+   │              PostgreSQL
+   │
+   └──────────────► pythonService.js
+                        │
+                        ▼
+                  HTTP Request
+                        │
+                        ▼
+                    app.py
+                        │
+                        ▼
+                 routes/quiz.py
+                        │
+                        ▼
+              adaptive_engine.py
+                        │
+                        ▼
+                 Adaptive Logic
+                        │
+                        ▼
+                 routes/quiz.py
+                        │
+                        ▼
+                pythonService.js
+                        │
+                        ▼
+                quizController.js
+                        │
+                        ▼
+                  PostgreSQL
+                        │
+                        ▼
+                    Frontend
+---
+
 # Database Modules
 
 - Users
@@ -304,7 +356,7 @@ Readiness Score
 ## Clone Repository
 
 ```bash
-git clone --branch KiranAiml --single-branch https://github.com/vayvoratech/edusaas-aiml.git 
+git clone --branch KiranAiml --single-branch https://github.com/vayvoratech/edusaas-aiml.git
 ```
 
 Move into the project
@@ -507,4 +559,4 @@ Skill Gap Report
 
 **Vayvora Technologies Pvt. Ltd.**
 
-**AI • Enterprise SaaS • EdTech**
+AI • Enterprise SaaS • EdTech
