@@ -4,7 +4,7 @@
 
 EduSaaS is an AI-powered adaptive skill assessment platform developed by **Vayvora Technologies Pvt. Ltd.** It evaluates a student's technical skills based on their selected job role using an adaptive assessment algorithm.
 
-The platform combines **Node.js**, **Python (Flask)**, and **PostgreSQL** to deliver scalable, intelligent assessments. Node.js manages the business logic and database operations, while Python serves as a stateless AI engine responsible for adaptive question selection and difficulty adjustment.
+The platform combines **Node.js**, **Python (Flask)**, and **PostgreSQL** to deliver scalable, intelligent assessments. Node.js manages the business logic, API orchestration, and database operations, while Python acts as a stateless AI engine responsible for adaptive question selection, difficulty adjustment, score calculation, and skill gap analysis.
 
 ---
 
@@ -16,7 +16,8 @@ The platform combines **Node.js**, **Python (Flask)**, and **PostgreSQL** to del
 - Dynamic Difficulty Adjustment
 - Skill-wise Assessment
 - Skill Gap Analysis
-- Personalized Learning Recommendations
+- Readiness Score Calculation
+- Missing Skills Identification
 - RESTful APIs
 - PostgreSQL Database
 - Modular Microservice Architecture
@@ -39,8 +40,10 @@ The platform combines **Node.js**, **Python (Flask)**, and **PostgreSQL** to del
 ## AI Engine
 
 - Adaptive Difficulty Algorithm
-- Skill Score Calculation
 - Dynamic Question Selection
+- Skill Score Calculation
+- Skill Gap Analysis
+- Readiness Score Calculation
 
 ## Version Control
 
@@ -52,33 +55,37 @@ The platform combines **Node.js**, **Python (Flask)**, and **PostgreSQL** to del
 # System Architecture
 
 ```
-                Frontend
-                    │
-                    ▼
-          Node.js (Express API)
-                    │
-        ┌───────────┴────────────┐
-        │                        │
-        ▼                        ▼
- PostgreSQL Database      Python Flask API
-                                │
-                                ▼
-                      Adaptive Quiz Engine
+                    Frontend
+                        │
+                        ▼
+              Node.js (Express API)
+                        │
+            ┌───────────┴────────────┐
+            │                        │
+            ▼                        ▼
+     PostgreSQL Database      Python Flask APIs
+                                      │
+                     ┌────────────────┴──────────────┐
+                     ▼                               ▼
+            Adaptive Quiz Engine          Skill Gap Engine
 ```
 
-Node.js is responsible for:
+### Node.js Responsibilities
 
 - Business Logic
+- API Orchestration
 - Database Operations
 - Quiz Session Management
-- API Endpoints
+- Quiz State Management
+- Skill Result Storage
 
-Python is responsible for:
+### Python Responsibilities
 
 - Adaptive Question Selection
 - Difficulty Adjustment
 - Skill Score Calculation
-- Adaptive Quiz Engine
+- Skill Gap Analysis
+- Readiness Score Calculation
 
 ---
 
@@ -93,26 +100,34 @@ Adaptive_Quiz/
 ├── .gitignore
 │
 ├── routes/
-│   └── quiz.py
+│   ├── quiz.py
+│   └── skill_gap.py
 │
 ├── services/
-│   └── adaptive_engine.py
+│   ├── adaptive_engine.py
+│   └── skill_gap_engine.py
 │
 ├── backend/
+│   ├── app.js
 │   ├── server.js
 │   ├── package.json
+│   ├── package-lock.json
+│   ├── .env
+│   │
 │   ├── config/
 │   │   └── db.js
+│   │
 │   ├── controllers/
-│   │   └── quizController.js
+│   │   ├── quizController.js
+│   │   └── skillGapController.js
+│   │
 │   ├── routes/
-│   │   └── quiz.js
-│   ├── services/
-│   │   └── pythonService.js
-│   └── .env
-│
-├── uploads/
-└── question_bank/
+│   │   ├── quiz.js
+│   │   └── skillGap.js
+│   │
+│   └── services/
+│       ├── pythonService.js
+│       └── skillGapPythonService.js
 ```
 
 ---
@@ -172,6 +187,7 @@ quizController.js
 # Database Modules
 
 - Users
+- Roles
 - Domain Roles
 - Skills
 - Domain Required Skills
@@ -179,6 +195,7 @@ quizController.js
 - Questions
 - Quiz Sessions
 - Quiz State
+- Student Answers
 - Student Skill Results
 
 ---
@@ -198,13 +215,16 @@ Create Quiz Session
 Load Required Skills
     │
     ▼
-Python Creates Adaptive State
+Python Creates Quiz State
     │
     ▼
-Question Starts at Easy Level
+Questions Start at Easy Difficulty
     │
     ▼
-Student Answers Question
+Student Submits Answer
+    │
+    ▼
+Adaptive Engine Evaluates Answer
     │
     ▼
 Difficulty Updated
@@ -219,6 +239,9 @@ Skill Completed
 Skill Score Calculated
     │
     ▼
+Store Student Skill Result
+    │
+    ▼
 Next Skill
     │
     ▼
@@ -227,13 +250,45 @@ Assessment Completed
 
 ---
 
+# Skill Gap Analysis Workflow
+
+```
+Assessment Completed
+            │
+            ▼
+Load Student Skill Results
+            │
+            ▼
+Load Required Skills
+            │
+            ▼
+Python Skill Gap Engine
+            │
+            ▼
+Compare Required vs Student Skill Levels
+            │
+            ▼
+Calculate Skill Gap
+            │
+            ▼
+Calculate Readiness Score
+            │
+            ▼
+Identify Missing Skills
+            │
+            ▼
+Generate Skill Gap Report
+```
+
+---
+
 # Difficulty Adaptation Logic
 
-- Assessment starts at **Easy** difficulty.
+- Assessment always starts at **Easy** difficulty.
 - Two consecutive correct answers increase the difficulty.
 - Two consecutive incorrect answers decrease the difficulty.
 - Maximum of **10 questions per skill**.
-- Marks are awarded based on question difficulty.
+- Marks are awarded according to question difficulty.
 
 | Difficulty | Marks |
 |------------|------:|
@@ -255,6 +310,47 @@ Assessment Completed
 
 ---
 
+# Readiness Score
+
+The readiness score measures how closely a student's current skills match the required skills for the selected job role.
+
+```
+Readiness Score =
+(Total Student Skill Levels ÷ Total Required Skill Levels) × 100
+```
+
+### Example
+
+```
+Student Levels
+
+Python             3
+SQL                2
+Machine Learning   3
+Deep Learning      2
+Git                3
+
+Total Student Levels = 13
+
+Required Levels
+
+Python             5
+SQL                3
+Machine Learning   5
+Deep Learning      5
+Git                3
+
+Total Required Levels = 21
+
+Readiness Score
+
+(13 ÷ 21) × 100
+
+= 61.9%
+```
+
+---
+
 # Installation
 
 ## Clone Repository
@@ -263,7 +359,9 @@ Assessment Completed
 git clone --branch KiranAiml --single-branch https://github.com/vayvoratech/edusaas-aiml.git
 ```
 
-```
+Move into the project
+
+```bash
 cd edusaas-aiml
 ```
 
@@ -277,21 +375,21 @@ Create Virtual Environment
 python -m venv venv
 ```
 
-Activate
+Activate Environment
 
-Windows
+### Windows
 
 ```bash
 venv\Scripts\activate
 ```
 
-Linux / macOS
+### Linux / macOS
 
 ```bash
 source venv/bin/activate
 ```
 
-Install Python Dependencies
+Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -319,30 +417,30 @@ npm install
 
 Create a `.env` file inside the `backend` directory.
 
-Example:
-
 ```env
+PORT=3000
+
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=your_database
 DB_USER=postgres
 DB_PASSWORD=your_password
 
-PYTHON_API=http://127.0.0.1:5000/api/quiz
-PORT=3000
+PYTHON_SERVICE=http://127.0.0.1:5000/api/quiz
+SKILL_GAP_SERVICE=http://127.0.0.1:5000/api/skill-gap
 ```
 
 ---
 
 # Run the Project
 
-### Start Python AI Engine
+## Start Flask AI Engine
 
 ```bash
 python app.py
 ```
 
-Runs on:
+Runs on
 
 ```
 http://127.0.0.1:5000
@@ -350,14 +448,15 @@ http://127.0.0.1:5000
 
 ---
 
-### Start Node.js Backend
+## Start Node.js Backend
 
 ```bash
 cd backend
+
 npm start
 ```
 
-Runs on:
+Runs on
 
 ```
 http://localhost:3000
@@ -367,26 +466,75 @@ http://localhost:3000
 
 # API Endpoints
 
-## Start Assessment
+## Adaptive Quiz
+
+### Start Assessment
 
 ```
 POST /api/quiz/start
 ```
 
----
-
-## Submit Answer
+### Submit Answer
 
 ```
 POST /api/quiz/submit-answer
 ```
 
----
-
-## Finish Assessment
+### Finish Assessment
 
 ```
 POST /api/quiz/finish
+```
+
+---
+
+## Skill Gap Analysis
+
+### Analyze Skill Gap
+
+```
+POST /api/skill-gap/analyze
+```
+
+---
+
+# Assessment Flow
+
+```
+Student
+    │
+    ▼
+Start Assessment
+    │
+    ▼
+Adaptive Quiz
+    │
+    ▼
+Question Selection
+    │
+    ▼
+Difficulty Adaptation
+    │
+    ▼
+Skill Score Calculation
+    │
+    ▼
+Store Student Skill Results
+    │
+    ▼
+Assessment Completed
+    │
+    ▼
+Skill Gap Analysis
+    │
+    ▼
+Readiness Score
+    │
+    ▼
+Missing Skills
+    │
+    ▼
+Skill Gap Report
 ```
 
 ---
@@ -396,12 +544,14 @@ POST /api/quiz/finish
 - JWT Authentication
 - Student Dashboard
 - Admin Dashboard
-- AI Course Recommendation
-- Skill Gap Analytics
+- AI Course Recommendation Engine
+- Personalized Learning Paths
 - Performance Prediction
 - Assignment Evaluation
 - Certificate Generation
-- Learning Path Recommendation
+- Certificate Verification
+- Industry Readiness Analytics
+- AI Interview Assessment
 
 ---
 
