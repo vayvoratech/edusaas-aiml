@@ -1,5 +1,7 @@
 import os
 
+import psycopg2
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
@@ -18,9 +20,32 @@ DATABASE_URL = (
 
 engine = create_engine(DATABASE_URL)
 
+
+def get_connection():
+
+    return psycopg2.connect(
+
+        host=DB_HOST,
+
+        port=DB_PORT,
+
+        database=DB_NAME,
+
+        user=DB_USER,
+
+        password=DB_PASSWORD
+
+    )
+
+
 try:
+
     with engine.connect():
+
         print("✅ Connected to PostgreSQL successfully!")
+
 except Exception as e:
+
     print("❌ Connection Failed")
+
     print(e)

@@ -1,16 +1,39 @@
 import os
+import logging
 import joblib
 import pandas as pd
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from surprise import Dataset, Reader, SVD
 
-# ---------------------------------------
-# Load Environment Variables
-# ---------------------------------------
+from surprise import Dataset
+from surprise import Reader
+from surprise import SVD
+
+from src.recommendation.confidence_calculator import ConfidenceCalculator
+from src.recommendation.explanation_engine import ExplanationEngine
+from src.recommendation.learning_pathway import LearningPathway
+from src.recommendation.prerequisite_validator import PrerequisiteValidator
+
+
+# -------------------------------------------------------
+# Logging
+# -------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
+
+
+# -------------------------------------------------------
+# Environment Variables
+# -------------------------------------------------------
 
 load_dotenv()
 
@@ -27,32 +50,56 @@ DATABASE_URL = (
 
 engine = create_engine(DATABASE_URL)
 
-# ---------------------------------------
+
+# -------------------------------------------------------
 # Load Data
-# ---------------------------------------
+# -------------------------------------------------------
+
+logger.info("Loading courses...")
 
 courses = pd.read_sql(
-    "SELECT * FROM courses",
+    """
+    SELECT *
+    FROM courses
+    """,
     engine
 )
 
+logger.info("Loading enrollments...")
+
 enrollments = pd.read_sql(
     """
-    SELECT student_id,
-           course_id,
-           rating
+    SELECT
+        student_id,
+        course_id,
+        rating
     FROM enrollments
     """,
     engine
 )
 
-# ---------------------------------------
+logger.info("Loading students...")
+
+students = pd.read_sql(
+    """
+    SELECT
+        student_id,
+        skill_level,
+        interest_area,
+        career_goal
+    FROM students
+    """,
+    engine
+)
+
+
+# -------------------------------------------------------
 # Content-Based Recommendation
-# ---------------------------------------
+# -------------------------------------------------------
 
 courses["features"] = (
-    courses["category"] + " " +
-    courses["difficulty_level"]
+    courses["category"].fillna("") + " " +
+    courses["difficulty_level"].fillna("")
 )
 
 vectorizer = CountVectorizer()
@@ -65,49 +112,80 @@ content_similarity = cosine_similarity(
     feature_matrix
 )
 
-# ---------------------------------------
-# Collaborative Filtering
-# ---------------------------------------
+logger.info("Content similarity matrix created successfully.")
 
-reader = Reader(
-    rating_scale=(1, 5)
-)
 
-data = Dataset.load_from_df(
+# -------------------------------------------------------
+# Collaborative Filtering (SVD)
+# -------------------------------------------------------
+
+reader = Reader(rating_scale=(1, 5))
+
+dataset = Dataset.load_from_df(
     enrollments[
-        ["student_id", "course_id", "rating"]
+        [
+            "student_id",
+            "course_id",
+            "rating"
+        ]
     ],
     reader
 )
 
-trainset = data.build_full_trainset()
+trainset = dataset.build_full_trainset()
 
 svd_model = SVD()
 
 svd_model.fit(trainset)
 
-print("✅ Hybrid Recommendation Model Built Successfully")
+logger.info("Collaborative filtering model trained successfully.")
 
-# ---------------------------------------
-# Recommendation Function
-# ---------------------------------------
+# -------------------------------------------------------
+# Hybrid Recommendation Function
+# -------------------------------------------------------
 
-def recommend(student_id: int, course_name: str):
+def recommend(
+    student_id: int,
+    course_name: str
+):
+
+    logger.info(
+        f"Generating recommendations for Student {student_id}"
+    )
 
     matched_course = courses[
-        courses["course_name"].str.lower() ==
-        course_name.lower()
+        courses["course_name"].str.lower()
+        == course_name.lower()
     ]
 
     if matched_course.empty:
+
         raise ValueError(
             f"Course '{course_name}' not found."
         )
 
+    student = students[
+        students["student_id"] == student_id
+    ]
+
+    if student.empty:
+
+        raise ValueError(
+            f"Student '{student_id}' not found."
+        )
+
+    student = student.iloc[0]
+
+    student_skill = student["skill_level"]
+    student_interest = student["interest_area"]
+    student_career = student["career_goal"]
+
     idx = matched_course.index[0]
 
     distances = list(
-        enumerate(content_similarity[idx])
+        enumerate(
+            content_similarity[idx]
+        )
     )
 
     distances = sorted(
@@ -118,56 +196,149 @@ def recommend(student_id: int, course_name: str):
 
     recommendations = []
 
-    for i in distances[1:6]:
+    for item in distances[1:11]:
 
-        course = courses.iloc[i[0]]
+        course = courses.iloc[item[0]]
 
-        predicted_rating = svd_model.predict(
-            student_id,
-            course["course_id"]
-        ).est
+        similarity_score = float(item[1])
 
-        recommendations.append({
+        predicted_rating = (
+            svd_model.predict(
+                student_id,
+                course["course_id"]
+            ).est
+        )
 
-            "course_id": int(course["course_id"]),
+        # -----------------------------------
+        # Student Profile Matching
+        # -----------------------------------
 
-            "course_name": course["course_name"],
+        profile_score = 0
 
-            "predicted_rating": round(
+        if (
+            course["category"]
+            == student_interest
+        ):
+            profile_score += 0.20
+
+        if (
+            course["difficulty_level"]
+            == student_skill
+        ):
+            profile_score += 0.20
+
+        if (
+            student_career.lower()
+            in course["category"].lower()
+        ):
+            profile_score += 0.20
+
+        confidence_score = (
+            ConfidenceCalculator.calculate(
                 predicted_rating,
-                2
+                similarity_score
             )
+        )
 
-        })
+        confidence_score = min(
+            confidence_score + profile_score,
+            1.0
+        )
 
-    recommendations.sort(
-        key=lambda x: x["predicted_rating"],
+        prerequisite_completed = True
+
+        explanation = (
+            ExplanationEngine.generate(
+                course_name=course["course_name"],
+                predicted_rating=predicted_rating,
+                confidence_score=confidence_score,
+                prerequisite_completed=prerequisite_completed
+            )
+        )
+
+        recommendations.append(
+
+            {
+
+                "course_id":
+                int(course["course_id"]),
+
+                "course_name":
+                course["course_name"],
+
+                "category":
+                course["category"],
+
+                "difficulty":
+                course["difficulty_level"],
+
+                "predicted_rating":
+                round(predicted_rating,2),
+
+                "similarity_score":
+                round(similarity_score,2),
+
+                "confidence_score":
+                round(confidence_score,2),
+
+                "recommendation_reason":
+                explanation,
+
+                "prerequisite_completed":
+                prerequisite_completed
+
+            }
+
+        )
+
+    recommendations = sorted(
+
+        recommendations,
+
+        key=lambda x:(
+
+            x["confidence_score"],
+
+            x["predicted_rating"],
+
+            x["similarity_score"]
+
+        ),
+
         reverse=True
+
+    )[:5]
+
+    learning_pathway = (
+
+        LearningPathway.generate(
+
+            student_id,
+
+            recommendations
+
+        )
+
     )
 
-    return recommendations
+    return {
 
-# ---------------------------------------
-# Save Artifacts
-# ---------------------------------------
+        "student_id": student_id,
 
-if __name__ == "__main__":
+        "course_name": course_name,
 
-    print("\nAvailable Courses:\n")
+        "recommendations": recommendations,
 
-    print(
-        courses["course_name"].tolist()
-    )
+        "learning_pathway": learning_pathway
 
-    result = recommend(
-        student_id=1,
-        course_name=courses.iloc[0]["course_name"]
-    )
+    }
 
-    print("\nTop Recommendations:\n")
 
-    for course in result:
-        print(course)
+    # -------------------------------------------------------
+# Save Model Artifacts
+# -------------------------------------------------------
+
+def save_models():
 
     os.makedirs(
         "models",
@@ -189,6 +360,62 @@ if __name__ == "__main__":
         "models/content_similarity.pkl"
     )
 
-    print(
-        "✅ Recommendation model artifacts saved successfully!"
+    logger.info(
+        "Recommendation model artifacts saved successfully."
     )
+
+
+# -------------------------------------------------------
+# Main
+# -------------------------------------------------------
+
+if __name__ == "__main__":
+
+    try:
+
+        logger.info(
+            "Hybrid Recommendation System Started"
+        )
+
+        sample_course = courses.iloc[0]["course_name"]
+
+        result = recommend(
+
+            student_id=1,
+
+            course_name=sample_course
+
+        )
+
+        print("\n==================================================")
+        print("Hybrid Recommendation Result")
+        print("==================================================")
+
+        print(f"Student ID : {result['student_id']}")
+        print(f"Course     : {result['course_name']}")
+
+        print("\nRecommended Courses\n")
+
+        for recommendation in result["recommendations"]:
+
+            print(
+                recommendation
+            )
+
+        print("\nLearning Pathway\n")
+
+        for pathway in result["learning_pathway"]:
+
+            print(
+                pathway
+            )
+
+        save_models()
+
+        logger.info(
+            "Recommendation System Completed Successfully."
+        )
+
+    except Exception as e:
+
+        logger.exception(e)

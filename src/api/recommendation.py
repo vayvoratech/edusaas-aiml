@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 
-from src.recommendation.hybrid_recommendation import recommend
+from src.recommendation.recommend import get_recommendations
 from src.exceptions.custom_exceptions import EduAIException
-
 
 router = APIRouter(
     prefix="/recommendation",
@@ -10,49 +9,43 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------
-# Home
-# ---------------------------------------
-
 @router.get("/")
 def home():
 
     return {
         "success": True,
-        "message": "Recommendation API is Running",
+        "message": "Recommendation API Running",
         "data": None
     }
 
-
-# ---------------------------------------
-# Health
-# ---------------------------------------
 
 @router.get("/health")
 def health():
 
     return {
+
         "success": True,
+
         "message": "Recommendation Service Healthy",
+
         "data": {
+
             "status": "healthy"
+
         }
+
     }
 
 
-# ---------------------------------------
-# Get Recommendations
-# ---------------------------------------
-
 @router.get("/recommend")
-def get_recommendations(
+def recommendation_api(
     student_id: int,
     course_name: str
 ):
 
     try:
 
-        recommendations = recommend(
+        result = get_recommendations(
             student_id,
             course_name
         )
@@ -63,15 +56,7 @@ def get_recommendations(
 
             "message": "Recommendations generated successfully.",
 
-            "data": {
-
-                "student_id": student_id,
-
-                "course_name": course_name,
-
-                "recommendations": recommendations
-
-            }
+            "data": result
 
         }
 

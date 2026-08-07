@@ -1,60 +1,44 @@
-from faker import Faker
-import random
-import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import text
 
-# PostgreSQL Configuration
-DB_USER = "postgres"
-DB_PASSWORD = "Chinnu123"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "eduai_db"
+# ---------------------------------------
+# Generate Course Prerequisites
+# ---------------------------------------
 
-DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+with engine.begin() as connection:
 
-engine = create_engine(DATABASE_URL)
+    # Get inserted course ids
+    course_ids = connection.execute(
+        text(
+            """
+            SELECT course_id
+            FROM courses
+            ORDER BY course_id
+            """
+        )
+    ).fetchall()
 
-fake = Faker()
+    # Skip first course (no prerequisite)
+    for i in range(1, len(course_ids)):
 
-categories = [
-    "Machine Learning",
-    "Deep Learning",
-    "Data Science",
-    "Python",
-    "SQL",
-    "NLP",
-    "Computer Vision",
-    "Power BI"
-]
+        connection.execute(
+            text(
+                """
+                INSERT INTO course_prerequisites
+                (
+                    course_id,
+                    prerequisite_course_id
+                )
+                VALUES
+                (
+                    :course_id,
+                    :prerequisite_course_id
+                )
+                """
+            ),
+            {
+                "course_id": course_ids[i].course_id,
+                "prerequisite_course_id": course_ids[i - 1].course_id
+            }
+        )
 
-difficulties = [
-    "Beginner",
-    "Intermediate",
-    "Advanced"
-]
-
-courses = []
-
-for i in range(1, 51):
-
-    courses.append({
-        "course_name": f"{random.choice(categories)} Course {i}",
-        "category": random.choice(categories),
-        "difficulty_level": random.choice(difficulties),
-        "duration_hours": random.randint(10, 80)
-    })
-
-df = pd.DataFrame(courses)
-
-print(df.head())
-
-df.to_sql(
-    "courses",
-    engine,
-    if_exists="append",
-    index=False
-)
-
-print("✅ 50 Courses Inserted Successfully!")
+print("✅ Course prerequisites generated successfully!")

@@ -1,59 +1,82 @@
-from faker import Faker
+import os
 import random
-import pandas as pd
-from sqlalchemy import create_engine
 
-# PostgreSQL Configuration
-DB_USER = "postgres"
-DB_PASSWORD = "Chinnu123"      # <-- Replace with your password
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "eduai_db"
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+
+# ---------------------------------------
+# Load Environment Variables
+# ---------------------------------------
+
+load_dotenv()
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
 
 DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}"
+    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
 engine = create_engine(DATABASE_URL)
 
-fake = Faker()
+# ---------------------------------------
+# Career Goals
+# ---------------------------------------
 
-skill_levels = ["Beginner", "Intermediate", "Advanced"]
-
-interest_areas = [
-    "Machine Learning",
-    "Data Science",
-    "Python",
-    "Deep Learning",
-    "NLP",
-    "Computer Vision",
-    "SQL",
-    "Power BI"
+career_goals = [
+    "AI Engineer",
+    "Data Scientist",
+    "Data Analyst",
+    "Machine Learning Engineer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "Cloud Engineer",
+    "Cyber Security Engineer"
 ]
 
-students = []
+# ---------------------------------------
+# Update Career Goals
+# ---------------------------------------
 
-for _ in range(1000):
-    students.append({
-        "full_name": fake.name(),
-        "email": fake.unique.email(),
-        "age": random.randint(18, 35),
-        "gender": random.choice(["Male", "Female"]),
-        "skill_level": random.choice(skill_levels),
-        "interest_area": random.choice(interest_areas),
-        "registration_date": fake.date_between("-2y", "today")
-    })
+def update_student_career_goals():
 
-df = pd.DataFrame(students)
+    with engine.begin() as connection:
 
-print(df.head())
+        students = connection.execute(
+            text(
+                """
+                SELECT student_id
+                FROM students
+                """
+            )
+        ).fetchall()
 
-df.to_sql(
-    "students",
-    engine,
-    if_exists="append",
-    index=False
-)
+        for student in students:
 
-print("✅ 1000 Students Inserted Successfully!")
+            connection.execute(
+                text(
+                    """
+                    UPDATE students
+                    SET career_goal = :career_goal
+                    WHERE student_id = :student_id
+                    """
+                ),
+                {
+                    "student_id": student.student_id,
+                    "career_goal": random.choice(career_goals)
+                }
+            )
 
+    print("✅ Student career goals updated successfully!")
+
+# ---------------------------------------
+# Main
+# ---------------------------------------
+
+if __name__ == "__main__":
+
+    update_student_career_goals()

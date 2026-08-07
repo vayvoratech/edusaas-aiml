@@ -1,4 +1,4 @@
-from src.recommendation.hybrid_recommendation import (
+from src.recommendation.hybridrecommendation import (
     recommend,
     courses
 )
@@ -6,7 +6,6 @@ from src.recommendation.hybrid_recommendation import (
 
 def test_recommendation():
 
-    # Use the first course from the database
     course_name = courses.iloc[0]["course_name"]
 
     result = recommend(
@@ -16,27 +15,22 @@ def test_recommendation():
 
     assert result is not None
 
-    assert isinstance(result, list)
+    assert "recommendations" in result
 
-    assert len(result) > 0
+    assert "learning_pathway" in result
 
-    first_course = result[0]
+    recommendations = result["recommendations"]
 
-    assert "course_id" in first_course
-    assert "course_name" in first_course
-    assert "predicted_rating" in first_course
+    assert len(recommendations) > 0
 
-    assert isinstance(
-        first_course["course_id"],
-        int
-    )
+    first = recommendations[0]
 
-    assert isinstance(
-        first_course["course_name"],
-        str
-    )
+    assert "course_id" in first
+    assert "course_name" in first
+    assert "predicted_rating" in first
+    assert "similarity_score" in first
+    assert "confidence_score" in first
+    assert "recommendation_reason" in first
 
-    assert isinstance(
-        first_course["predicted_rating"],
-        float
-    )
+    assert isinstance(first["course_id"], int)
+    assert isinstance(first["course_name"], str)

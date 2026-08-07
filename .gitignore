@@ -30,3 +30,18 @@ models/sentiment/model.safetensors
 models/sentiment/tokenizer.json
 models/sentiment/config.json
 models/sentiment/tokenizer_config.json
+
+# Trained Models
+models/
+
+# Hugging Face Checkpoints
+checkpoint-*/
+
+# Model Files
+*.safetensors
+*.bin
+*.pt
+
+# Trainer Files
+trainer_state.json
+training_args.bin
