@@ -17,14 +17,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run CI checks
-        run: echo "CI pipeline is running successfully"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Linting
-        run: echo "Linting completed successfully"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Flake8
+        run: pip install flake8
+
+      - name: Static Code Analysis
+        run: flake8 .
 
       - name: Unit Tests
-        run: echo "Unit tests passed successfully"
+        run: pytest
 
       - name: Build Check
-        run: echo "Build completed successfully"
+        run: python -m compileall .
+
+      - name: Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
