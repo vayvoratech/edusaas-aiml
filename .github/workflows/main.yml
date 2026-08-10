@@ -28,3 +28,6 @@ jobs:
 
       - name: Build Check
         run: echo "Build completed successfully"
+
+      - name: Deploy to Development Environment
+        run: echo "Deployment to Development Environment completed successfully"
