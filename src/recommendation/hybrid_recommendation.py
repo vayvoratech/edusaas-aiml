@@ -18,10 +18,9 @@ from src.recommendation.explanation_engine import ExplanationEngine
 from src.recommendation.learning_pathway import LearningPathway
 from src.recommendation.prerequisite_validator import PrerequisiteValidator
 
-
-# -------------------------------------------------------
-# Logging
-# -------------------------------------------------------
+# ============================================================
+# LOGGING
+# ============================================================
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,100 +30,184 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# -------------------------------------------------------
-# Environment Variables
-# -------------------------------------------------------
+# ============================================================
+# DATABASE CONFIGURATION
+# ============================================================
 
 load_dotenv()
 
-DB_USER = os.getenv("DB_USER")
+DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+
+# Final database currently being used
+DB_NAME = "eduai_db"
+
+# Finalized AI recommendation schema
+SCHEMA = "education"
 
 DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}"
+    f"postgresql+psycopg2://"
+    f"{DB_USER}:{DB_PASSWORD}"
     f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True
+)
 
 
-# -------------------------------------------------------
-# Load Data
-# -------------------------------------------------------
+# ============================================================
+# LOAD COURSES
+# ============================================================
 
 logger.info("Loading courses...")
 
 courses = pd.read_sql(
-    """
-    SELECT *
-    FROM courses
+    f"""
+    SELECT
+        id,
+        title,
+        description,
+        provider,
+        category,
+        difficulty,
+        status,
+        educator_id
+    FROM {SCHEMA}.courses
+    WHERE status = 'active'
     """,
     engine
 )
 
-logger.info("Loading enrollments...")
+if courses.empty:
+    raise ValueError(
+        "No active courses found in education.courses"
+    )
 
-enrollments = pd.read_sql(
-    """
+logger.info(
+    f"Loaded {len(courses)} active courses."
+)
+
+
+# ============================================================
+# LOAD COURSE RATINGS
+# ============================================================
+
+logger.info("Loading course ratings...")
+
+ratings = pd.read_sql(
+    f"""
     SELECT
-        student_id,
+        user_id,
         course_id,
         rating
-    FROM enrollments
+    FROM {SCHEMA}.course_ratings
+    WHERE rating IS NOT NULL
     """,
     engine
 )
 
-logger.info("Loading students...")
+if ratings.empty:
+    raise ValueError(
+        "No ratings found in education.course_ratings"
+    )
 
-students = pd.read_sql(
-    """
+logger.info(
+    f"Loaded {len(ratings)} course ratings."
+)
+
+
+# ============================================================
+# LOAD USERS + DOMAIN ROLES
+# ============================================================
+
+logger.info("Loading users...")
+
+users = pd.read_sql(
+    f"""
     SELECT
-        student_id,
-        skill_level,
-        interest_area,
-        career_goal
-    FROM students
+        u.id,
+        u.name,
+        u.email,
+        u.role_id,
+        u.domain_role_id,
+        dr.domain_name,
+        dr.category AS domain_category
+    FROM {SCHEMA}.users u
+    LEFT JOIN {SCHEMA}.domain_roles dr
+        ON u.domain_role_id = dr.domain_role_id
     """,
     engine
 )
 
+if users.empty:
+    raise ValueError(
+        "No users found in education.users"
+    )
 
-# -------------------------------------------------------
-# Content-Based Recommendation
-# -------------------------------------------------------
+logger.info(
+    f"Loaded {len(users)} users."
+)
+
+
+# ============================================================
+# CONTENT-BASED FEATURES
+# ============================================================
+
+courses["title"] = courses["title"].fillna("")
+courses["description"] = courses["description"].fillna("")
+courses["category"] = courses["category"].fillna("")
+courses["difficulty"] = courses["difficulty"].fillna("")
 
 courses["features"] = (
-    courses["category"].fillna("") + " " +
-    courses["difficulty_level"].fillna("")
+    courses["title"] + " " +
+    courses["description"] + " " +
+    courses["category"] + " " +
+    courses["difficulty"]
 )
 
-vectorizer = CountVectorizer()
+
+# ============================================================
+# CONTENT VECTOR REPRESENTATION
+# ============================================================
+
+vectorizer = CountVectorizer(
+    stop_words="english"
+)
 
 feature_matrix = vectorizer.fit_transform(
     courses["features"]
 )
 
+
+# ============================================================
+# CONTENT SIMILARITY
+# ============================================================
+
 content_similarity = cosine_similarity(
     feature_matrix
 )
 
-logger.info("Content similarity matrix created successfully.")
+logger.info(
+    "Content similarity matrix created successfully."
+)
 
 
-# -------------------------------------------------------
-# Collaborative Filtering (SVD)
-# -------------------------------------------------------
+# ============================================================
+# COLLABORATIVE FILTERING
+# ============================================================
 
-reader = Reader(rating_scale=(1, 5))
+reader = Reader(
+    rating_scale=(1, 5)
+)
 
 dataset = Dataset.load_from_df(
-    enrollments[
+    ratings[
         [
-            "student_id",
+            "user_id",
             "course_id",
             "rating"
         ]
@@ -134,27 +217,38 @@ dataset = Dataset.load_from_df(
 
 trainset = dataset.build_full_trainset()
 
-svd_model = SVD()
+svd_model = SVD(
+    random_state=42
+)
 
-svd_model.fit(trainset)
+svd_model.fit(
+    trainset
+)
 
-logger.info("Collaborative filtering model trained successfully.")
+logger.info(
+    "Collaborative filtering SVD model trained successfully."
+)
 
-# -------------------------------------------------------
-# Hybrid Recommendation Function
-# -------------------------------------------------------
+
+# ============================================================
+# RECOMMENDATION FUNCTION
+# ============================================================
 
 def recommend(
-    student_id: int,
-    course_name: str
+    user_id,
+    course_name
 ):
 
     logger.info(
-        f"Generating recommendations for Student {student_id}"
+        f"Generating recommendations for User {user_id}"
     )
 
+    # --------------------------------------------------------
+    # Find input course
+    # --------------------------------------------------------
+
     matched_course = courses[
-        courses["course_name"].str.lower()
+        courses["title"].str.lower()
         == course_name.lower()
     ]
 
@@ -164,23 +258,48 @@ def recommend(
             f"Course '{course_name}' not found."
         )
 
-    student = students[
-        students["student_id"] == student_id
+    matched_course = matched_course.iloc[0]
+
+    idx = matched_course.name
+
+
+    # --------------------------------------------------------
+    # Find user
+    # --------------------------------------------------------
+
+    user = users[
+        users["id"] == user_id
     ]
 
-    if student.empty:
+    if user.empty:
 
         raise ValueError(
-            f"Student '{student_id}' not found."
+            f"User '{user_id}' not found."
         )
 
-    student = student.iloc[0]
+    user = user.iloc[0]
 
-    student_skill = student["skill_level"]
-    student_interest = student["interest_area"]
-    student_career = student["career_goal"]
 
-    idx = matched_course.index[0]
+    # --------------------------------------------------------
+    # User profile
+    # --------------------------------------------------------
+
+    domain_name = (
+        str(user["domain_name"])
+        if pd.notna(user["domain_name"])
+        else ""
+    )
+
+    domain_category = (
+        str(user["domain_category"])
+        if pd.notna(user["domain_category"])
+        else ""
+    )
+
+
+    # --------------------------------------------------------
+    # Content similarity
+    # --------------------------------------------------------
 
     distances = list(
         enumerate(
@@ -194,44 +313,72 @@ def recommend(
         reverse=True
     )
 
+
+    # --------------------------------------------------------
+    # Generate candidates
+    # --------------------------------------------------------
+
     recommendations = []
 
-    for item in distances[1:11]:
+    for item in distances[1:21]:
 
-        course = courses.iloc[item[0]]
+        course_index = item[0]
 
-        similarity_score = float(item[1])
+        course = courses.iloc[
+            course_index
+        ]
 
-        predicted_rating = (
-            svd_model.predict(
-                student_id,
-                course["course_id"]
-            ).est
+        similarity_score = float(
+            item[1]
         )
 
-        # -----------------------------------
-        # Student Profile Matching
-        # -----------------------------------
 
-        profile_score = 0
+        # ----------------------------------------------------
+        # Collaborative filtering prediction
+        # ----------------------------------------------------
 
-        if (
+        predicted_rating = svd_model.predict(
+            str(user_id),
+            str(course["id"])
+        ).est
+
+
+        # ----------------------------------------------------
+        # Profile matching
+        # ----------------------------------------------------
+
+        profile_score = 0.0
+
+        course_category = str(
             course["category"]
-            == student_interest
+        )
+
+        course_difficulty = str(
+            course["difficulty"]
+        )
+
+
+        # Domain category match
+        if (
+            domain_category
+            and domain_category.lower()
+            in course_category.lower()
         ):
             profile_score += 0.20
 
+
+        # Domain/role match
         if (
-            course["difficulty_level"]
-            == student_skill
+            domain_name
+            and domain_name.lower()
+            in course_category.lower()
         ):
             profile_score += 0.20
 
-        if (
-            student_career.lower()
-            in course["category"].lower()
-        ):
-            profile_score += 0.20
+
+        # ----------------------------------------------------
+        # Confidence score
+        # ----------------------------------------------------
 
         confidence_score = (
             ConfidenceCalculator.calculate(
@@ -245,98 +392,171 @@ def recommend(
             1.0
         )
 
+
+        # ----------------------------------------------------
+        # Prerequisite validation
+        # ----------------------------------------------------
+
         prerequisite_completed = True
+
+        try:
+
+            prerequisite_result = (
+                PrerequisiteValidator.validate(
+                    user_id,
+                    course["id"]
+                )
+            )
+
+            if isinstance(
+                prerequisite_result,
+                bool
+            ):
+                prerequisite_completed = (
+                    prerequisite_result
+                )
+
+        except Exception as exc:
+
+            logger.warning(
+                "Prerequisite validation skipped "
+                "for course %s: %s",
+                course["id"],
+                exc
+            )
+
+            prerequisite_completed = True
+
+
+        # ----------------------------------------------------
+        # Explanation
+        # ----------------------------------------------------
 
         explanation = (
             ExplanationEngine.generate(
-                course_name=course["course_name"],
+                course_name=course["title"],
                 predicted_rating=predicted_rating,
                 confidence_score=confidence_score,
-                prerequisite_completed=prerequisite_completed
+                prerequisite_completed=(
+                    prerequisite_completed
+                )
             )
         )
 
+
+        # ----------------------------------------------------
+        # Recommendation object
+        # ----------------------------------------------------
+
         recommendations.append(
-
             {
+                "course_id": str(
+                    course["id"]
+                ),
 
-                "course_id":
-                int(course["course_id"]),
+                "course_name": (
+                    course["title"]
+                ),
 
-                "course_name":
-                course["course_name"],
+                "category": (
+                    course["category"]
+                ),
 
-                "category":
-                course["category"],
+                "difficulty": (
+                    course["difficulty"]
+                ),
 
-                "difficulty":
-                course["difficulty_level"],
+                "predicted_rating": round(
+                    float(predicted_rating),
+                    2
+                ),
 
-                "predicted_rating":
-                round(predicted_rating,2),
+                "similarity_score": round(
+                    float(similarity_score),
+                    2
+                ),
 
-                "similarity_score":
-                round(similarity_score,2),
+                "confidence_score": round(
+                    float(confidence_score),
+                    2
+                ),
 
-                "confidence_score":
-                round(confidence_score,2),
+                "recommendation_reason": (
+                    explanation
+                ),
 
-                "recommendation_reason":
-                explanation,
-
-                "prerequisite_completed":
-                prerequisite_completed
-
+                "prerequisite_completed": (
+                    prerequisite_completed
+                )
             }
-
         )
+
+
+    # ========================================================
+    # FINAL RANKING
+    # ========================================================
 
     recommendations = sorted(
-
         recommendations,
-
-        key=lambda x:(
-
+        key=lambda x: (
             x["confidence_score"],
-
             x["predicted_rating"],
-
             x["similarity_score"]
-
         ),
-
         reverse=True
-
     )[:5]
 
-    learning_pathway = (
 
-        LearningPathway.generate(
+    # ========================================================
+    # LEARNING PATHWAY
+    # ========================================================
 
-            student_id,
+    try:
 
-            recommendations
-
+        learning_pathway = (
+            LearningPathway.generate(
+                user_id,
+                recommendations
+            )
         )
 
-    )
+    except Exception as exc:
+
+        logger.warning(
+            "Learning pathway generation failed: %s",
+            exc
+        )
+
+        learning_pathway = []
+
+
+    # ========================================================
+    # FINAL RESPONSE
+    # ========================================================
 
     return {
 
-        "student_id": student_id,
+        "user_id": str(
+            user_id
+        ),
 
-        "course_name": course_name,
+        "course_name": (
+            course_name
+        ),
 
-        "recommendations": recommendations,
+        "recommendations": (
+            recommendations
+        ),
 
-        "learning_pathway": learning_pathway
-
+        "learning_pathway": (
+            learning_pathway
+        )
     }
 
 
-    # -------------------------------------------------------
-# Save Model Artifacts
-# -------------------------------------------------------
+# ============================================================
+# SAVE MODEL ARTIFACTS
+# ============================================================
 
 def save_models():
 
@@ -365,9 +585,9 @@ def save_models():
     )
 
 
-# -------------------------------------------------------
-# Main
-# -------------------------------------------------------
+# ============================================================
+# MAIN
+# ============================================================
 
 if __name__ == "__main__":
 
@@ -377,45 +597,109 @@ if __name__ == "__main__":
             "Hybrid Recommendation System Started"
         )
 
-        sample_course = courses.iloc[0]["course_name"]
+
+        # ----------------------------------------------------
+        # Pick a real user from the database
+        # ----------------------------------------------------
+
+        sample_user_id = users.iloc[0]["id"]
+
+        sample_course = courses.iloc[0]["title"]
+
+
+        # ----------------------------------------------------
+        # Generate recommendations
+        # ----------------------------------------------------
 
         result = recommend(
-
-            student_id=1,
-
+            user_id=sample_user_id,
             course_name=sample_course
-
         )
 
-        print("\n==================================================")
-        print("Hybrid Recommendation Result")
-        print("==================================================")
 
-        print(f"Student ID : {result['student_id']}")
-        print(f"Course     : {result['course_name']}")
+        # ----------------------------------------------------
+        # Print result
+        # ----------------------------------------------------
 
-        print("\nRecommended Courses\n")
+        print()
+        print(
+            "=" * 60
+        )
 
-        for recommendation in result["recommendations"]:
+        print(
+            "Hybrid Recommendation Result"
+        )
+
+        print(
+            "=" * 60
+        )
+
+        print(
+            f"User ID    : "
+            f"{result['user_id']}"
+        )
+
+        print(
+            f"Course     : "
+            f"{result['course_name']}"
+        )
+
+
+        print()
+        print(
+            "Recommended Courses"
+        )
+
+        print(
+            "-" * 60
+        )
+
+
+        for recommendation in (
+            result["recommendations"]
+        ):
 
             print(
                 recommendation
             )
 
-        print("\nLearning Pathway\n")
 
-        for pathway in result["learning_pathway"]:
+        print()
+        print(
+            "Learning Pathway"
+        )
+
+        print(
+            "-" * 60
+        )
+
+
+        for pathway in (
+            result["learning_pathway"]
+        ):
 
             print(
                 pathway
             )
 
+
+        # ----------------------------------------------------
+        # Save artifacts
+        # ----------------------------------------------------
+
         save_models()
+
 
         logger.info(
             "Recommendation System Completed Successfully."
         )
 
+
     except Exception as e:
 
-        logger.exception(e)
+        logger.exception(
+            "Recommendation System Failed: %s",
+            e
+        )
+
+        raise

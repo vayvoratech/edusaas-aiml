@@ -2,11 +2,15 @@ from src.recommendation.hybrid_recommendation import recommend
 
 
 def get_recommendations(
-    student_id: int,
+    user_id,
     course_name: str
 ):
+    """
+    Generate hybrid course recommendations
+    for a user and a selected course.
+    """
 
     return recommend(
-        student_id,
+        user_id,
         course_name
     )

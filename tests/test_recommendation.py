@@ -1,8 +1,7 @@
-from src.recommendation.hybridrecommendation import (
+from src.recommendation.hybrid_recommendation import (
     recommend,
     courses
 )
-
 
 def test_recommendation():
 
