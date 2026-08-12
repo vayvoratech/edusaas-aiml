@@ -1,47 +1,176 @@
-# Virtual environments
+# Python
+routes/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
 venv/
+env/
 .venv/
 
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Secrets / environment variables
+# Environment Variables# =====================================================
+# Environment Variables
+# =====================================================
 .env
 .env.*
 
-# VS Code / IDE settings
+# =====================================================
+# Python
+# =====================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Python Tools
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# =====================================================
+# Node.js
+# =====================================================
+backend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =====================================================
+# IDEs
+# =====================================================
 .vscode/
 .idea/
 
-# Jupyter temporary files
-.ipynb_checkpoints/
+# =====================================================
+# Operating System
+# =====================================================
+.DS_Store
+Thumbs.db
+
+# =====================================================
+# Logs
+# =====================================================
+logs/
+*.log
+
+# =====================================================
+# Database Files
+# =====================================================
+*.db
+*.sqlite3
+
+# =====================================================
+# Temporary Files
+# =====================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# =====================================================
+# Uploads
+# =====================================================
+uploads/
+
+# =====================================================
+# Generated Files
+# =====================================================
+*.csv
+
+# =====================================================
+# Coverage
+# =====================================================
+coverage/
+
+# =====================================================
+# Flask
+# =====================================================
+instance/
+.webassets-cache/
+
+# =====================================================
+# Cache
+# =====================================================
+.cache/
+
+# =====================================================
+# Postman
+# =====================================================
+.postman/
+postman/
+*.postman_environment.json
+*.postman_globals.json
+postman/
+# =====================================================
+# Misc
+# =====================================================
+*.pid
+*.seed
+*.out
+.env
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
 
 # Logs
 *.log
 
-# Operating system files
-.DS_Store
-Thumbs.db
+# Database
+*.db
+*.sqlite3
 
-models/sentiment/model.safetensors
-models/sentiment/tokenizer.json
-models/sentiment/config.json
-models/sentiment/tokenizer_config.json
+# Build
+build/
+dist/
+*.egg-info/
 
-# Trained Models
-models/
+# Python Cache
+.pytest_cache/
+.mypy_cache/
 
-# Hugging Face Checkpoints
-checkpoint-*/
+# Jupyter
+.ipynb_checkpoints/
 
-# Model Files
-*.safetensors
-*.bin
-*.pt
+# Coverage
+.coverage
+htmlcov/
 
-# Trainer Files
-trainer_state.json
-training_args.bin
+# Temporary Files
+*.tmp
+*.bak
+
+# Uploaded Files
+uploads/
+
+# Generated CSVs (optional)
+*.csv
+
+# Ignore compiled files
+*.so
+Fraud_detection/node_server/node_modules/
+Fraud_detection/node_server/package.json
+Fraud_detection/node_server/package-lock.json
