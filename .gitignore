@@ -1,0 +1,176 @@
+# Python
+routes/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# Environment Variables# =====================================================
+# Environment Variables
+# =====================================================
+.env
+.env.*
+
+# =====================================================
+# Python
+# =====================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# Python Tools
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# =====================================================
+# Node.js
+# =====================================================
+backend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =====================================================
+# IDEs
+# =====================================================
+.vscode/
+.idea/
+
+# =====================================================
+# Operating System
+# =====================================================
+.DS_Store
+Thumbs.db
+
+# =====================================================
+# Logs
+# =====================================================
+logs/
+*.log
+
+# =====================================================
+# Database Files
+# =====================================================
+*.db
+*.sqlite3
+
+# =====================================================
+# Temporary Files
+# =====================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# =====================================================
+# Uploads
+# =====================================================
+uploads/
+
+# =====================================================
+# Generated Files
+# =====================================================
+*.csv
+
+# =====================================================
+# Coverage
+# =====================================================
+coverage/
+
+# =====================================================
+# Flask
+# =====================================================
+instance/
+.webassets-cache/
+
+# =====================================================
+# Cache
+# =====================================================
+.cache/
+
+# =====================================================
+# Postman
+# =====================================================
+.postman/
+postman/
+*.postman_environment.json
+*.postman_globals.json
+postman/
+# =====================================================
+# Misc
+# =====================================================
+*.pid
+*.seed
+*.out
+.env
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Logs
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Python Cache
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Temporary Files
+*.tmp
+*.bak
+
+# Uploaded Files
+uploads/
+
+# Generated CSVs (optional)
+*.csv
+
+# Ignore compiled files
+*.so
+Fraud_detection/node_server/node_modules/
+Fraud_detection/node_server/package.json
+Fraud_detection/node_server/package-lock.json
