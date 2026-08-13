@@ -2,61 +2,57 @@ import time
 
 
 class FraudEngine:
+    """
+    Fraud detection state for one examination session.
+
+    Rules:
+
+    FACE
+        1st violation -> WARNING
+        2nd violation -> TERMINATE
+
+    PHONE
+        1st violation -> WARNING + 10 second PAUSE
+        2nd violation -> TERMINATE
+
+    BLINK
+        5 blinks  -> WARNING
+        10 blinks -> TERMINATE
+
+    MOUTH
+        5 events  -> WARNING
+        10 events -> TERMINATE
+
+    EYE TRACKING
+        5 events  -> WARNING
+        10 events -> TERMINATE
+
+    HEAD POSE
+        REMOVED
+    """
+
+    # ======================================================
+    # CONFIGURATION
+    # ======================================================
+
+    VIOLATION_PERSISTENCE_SECONDS = 3.0
+
+    FACE_TERMINATE_THRESHOLD = 2
+    PHONE_TERMINATE_THRESHOLD = 2
+
+    BLINK_WARNING_THRESHOLD = 5
+    BLINK_TERMINATE_THRESHOLD = 10
+
+    MOUTH_WARNING_THRESHOLD = 5
+    MOUTH_TERMINATE_THRESHOLD = 10
+
+    EYE_WARNING_THRESHOLD = 5
+    EYE_TERMINATE_THRESHOLD = 10
 
     def __init__(self):
 
         # ==================================================
-        # CONFIGURATION
-        # ==================================================
-
-        # Violation must remain continuously detected
-        # for this many seconds before it is counted.
-        self.VIOLATION_PERSISTENCE_SECONDS = 3.0
-
-        # ==================================================
-        # MOBILE / PHONE RULES
-        # ==================================================
-
-        # 1st -> WARNING + 10 second pause
-        # 2nd -> WARNING + 10 second pause
-        # 3rd -> TERMINATE
-
-        self.PHONE_TERMINATE_THRESHOLD = 3
-
-        # ==================================================
-        # FACE RULES
-        # ==================================================
-
-        # 1st -> WARNING
-        # 2nd -> WARNING
-        # 3rd -> TERMINATE
-
-        self.FACE_TERMINATE_THRESHOLD = 3
-
-        # ==================================================
-        # HEAD POSE RULES
-        # ==================================================
-
-        # 1st head-turn -> WARNING + PAUSE
-        # 2nd head-turn -> TERMINATE
-
-        self.HEAD_TERMINATE_THRESHOLD = 2
-
-        # ==================================================
-        # BROWSER RULES
-        # ==================================================
-
-        # TAB_SWITCH + FULLSCREEN_EXIT
-        #
-        # 1st -> WARNING
-        # 2nd -> WARNING
-        # 3rd -> WARNING
-        # 4th -> TERMINATE
-
-        self.BROWSER_TERMINATE_THRESHOLD = 4
-
-        # ==================================================
-        # PHONE STATE
+        # PHONE
         # ==================================================
 
         self.phone_detections = 0
@@ -68,7 +64,7 @@ class FraudEngine:
         self.phone_event_counted = False
 
         # ==================================================
-        # FACE STATE
+        # FACE
         # ==================================================
 
         self.face_violations = 0
@@ -78,155 +74,42 @@ class FraudEngine:
         self.face_event_counted = False
 
         # ==================================================
-        # HEAD POSE STATE
+        # BLINK
         # ==================================================
 
-        # Number of actual persistent head violations.
+        self.blink_count = 0
 
-        self.head_violations = 0
-
-        # Time at which the current head-turn
-        # event started.
-
-        self.head_violation_start = None
-
-        # Prevents the same continuous head-turn
-        # from being counted repeatedly.
-
-        self.head_event_counted = False
+        self.blink_event_active = False
 
         # ==================================================
-        # BROWSER STATE
+        # MOUTH
         # ==================================================
 
-        self.browser_violations = 0
+        self.mouth_count = 0
 
-        self.last_browser_violation_time = {}
+        self.mouth_event_active = False
 
         # ==================================================
-        # EXAM STATE
+        # EYE TRACKING
+        # ==================================================
+
+        self.eye_tracking_count = 0
+
+        self.eye_event_active = False
+
+        # ==================================================
+        # EXAM
         # ==================================================
 
         self.exam_terminated = False
 
     # ======================================================
-    # MAIN PHONE PROCESSOR
+    # COUNTS
     # ======================================================
 
-    def process(self, phone_result):
-
-        now = time.time()
-
-        # ==================================================
-        # SAFETY CHECK
-        # ==================================================
-
-        if not isinstance(phone_result, dict):
-
-            return self._normal_response(now)
-
-        # ==================================================
-        # ALREADY TERMINATED
-        # ==================================================
-
-        if self.exam_terminated:
-
-            return self._termination_response(
-                "Exam already terminated.",
-                now
-            )
-
-        # ==================================================
-        # READ PHONE STATUS
-        # ==================================================
-
-        phone_status = phone_result.get(
-            "status",
-            "NO_PHONE"
-        )
-
-        phone_detected = (
-            phone_status == "PHONE_DETECTED"
-        )
-
-        phone_confidence = phone_result.get(
-            "confidence",
-            0.0
-        )
-
-        # ==================================================
-        # PHONE DETECTED
-        # ==================================================
-
-        if phone_detected:
-
-            # Raw frame detection count
-            self.phone_detections += 1
-
-            # ------------------------------------------------
-            # START PERSISTENCE TIMER
-            # ------------------------------------------------
-
-            if self.phone_violation_start is None:
-
-                self.phone_violation_start = now
-
-                self.phone_event_counted = False
-
-            # ------------------------------------------------
-            # PERSISTENCE TIME
-            # ------------------------------------------------
-
-            persistence_time = (
-                now -
-                self.phone_violation_start
-            )
-
-            # ------------------------------------------------
-            # PERSISTENCE THRESHOLD
-            # ------------------------------------------------
-
-            if (
-                persistence_time
-                >= self.VIOLATION_PERSISTENCE_SECONDS
-            ):
-
-                # Count continuous event only once
-
-                if not self.phone_event_counted:
-
-                    self.phone_event_counted = True
-
-                    self.phone_violations += 1
-
-                    return self._phone_action(
-                        phone_confidence,
-                        now
-                    )
-
-        # ==================================================
-        # PHONE NO LONGER DETECTED
-        # ==================================================
-
-        else:
-
-            self.phone_violation_start = None
-
-            self.phone_event_counted = False
-
-        # ==================================================
-        # NORMAL
-        # ==================================================
+    def _counts(self):
 
         return {
-            "action": "NORMAL",
-            "severity": "LOW",
-
-            "phone_detected":
-                phone_detected,
-
-            "phone_confidence":
-                phone_confidence,
 
             "phone_detections":
                 self.phone_detections,
@@ -237,994 +120,141 @@ class FraudEngine:
             "face_violations":
                 self.face_violations,
 
-            "head_violations":
-                self.head_violations,
+            "blink_count":
+                self.blink_count,
 
-            "browser_violations":
-                self.browser_violations,
+            "mouth_count":
+                self.mouth_count,
 
-            "timestamp":
-                now
+            "eye_tracking_count":
+                self.eye_tracking_count,
+
         }
 
     # ======================================================
-    # PHONE ACTION
+    # NORMAL
     # ======================================================
 
-    def _phone_action(
+    def _normal(
         self,
-        phone_confidence,
-        now
+        now,
+        **extra
     ):
 
-        count = self.phone_violations
-
-        # ==================================================
-        # THIRD PHONE VIOLATION
-        # ==================================================
-
-        if (
-            count
-            >=
-            self.PHONE_TERMINATE_THRESHOLD
-        ):
-
-            self.exam_terminated = True
-
-            return {
-                "action":
-                    "TERMINATE_EXAM",
-
-                "severity":
-                    "HIGH",
-
-                "reason":
-                    "Mobile phone detected three times.",
-
-                "warning":
-                    False,
-
-                "pause":
-                    False,
-
-                "pause_duration":
-                    0,
-
-                "phone_detected":
-                    True,
-
-                "phone_confidence":
-                    phone_confidence,
-
-                "phone_detections":
-                    self.phone_detections,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "head_violations":
-                    self.head_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # FIRST / SECOND PHONE VIOLATION
-        # ==================================================
-
         return {
-            "action":
-                "PAUSE_EXAM",
 
-            "severity":
-                "MEDIUM",
-
-            "reason":
-                f"Mobile phone detected. "
-                f"Warning {count}/2.",
-
-            "warning":
-                True,
-
-            "pause":
-                True,
-
-            "pause_duration":
-                10,
-
-            "phone_detected":
-                True,
-
-            "phone_confidence":
-                phone_confidence,
-
-            "phone_detections":
-                self.phone_detections,
-
-            "phone_violations":
-                self.phone_violations,
-
-            "face_violations":
-                self.face_violations,
-
-            "head_violations":
-                self.head_violations,
-
-            "browser_violations":
-                self.browser_violations,
-
-            "timestamp":
-                now
-        }
-
-    # ======================================================
-    # FACE PROCESSOR
-    # ======================================================
-
-    def process_face(self, face_result):
-
-        now = time.time()
-
-        # ==================================================
-        # SAFETY CHECK
-        # ==================================================
-
-        if not isinstance(face_result, dict):
-
-            return self._normal_response(now)
-
-        # ==================================================
-        # ALREADY TERMINATED
-        # ==================================================
-
-        if self.exam_terminated:
-
-            return self._termination_response(
-                "Exam already terminated.",
-                now
-            )
-
-        # ==================================================
-        # READ FACE STATUS
-        # ==================================================
-
-        face_status = face_result.get(
-            "status",
-            "NO_FACE"
-        )
-
-        face_detected = (
-            face_status == "FACE_DETECTED"
-        )
-
-        face_confidence = face_result.get(
-            "confidence",
-            0.0
-        )
-
-        # ==================================================
-        # FACE PRESENT
-        # ==================================================
-
-        if face_detected:
-
-            self.face_violation_start = None
-
-            self.face_event_counted = False
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "face_detected":
-                    True,
-
-                "face_confidence":
-                    face_confidence,
-
-                "face_violations":
-                    self.face_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "head_violations":
-                    self.head_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # FACE NOT DETECTED
-        # ==================================================
-
-        if self.face_violation_start is None:
-
-            self.face_violation_start = now
-
-            self.face_event_counted = False
-
-        persistence_time = (
-            now -
-            self.face_violation_start
-        )
-
-        # ==================================================
-        # PERSISTENCE CHECK
-        # ==================================================
-
-        if (
-            persistence_time
-            >= self.VIOLATION_PERSISTENCE_SECONDS
-        ):
-
-            if not self.face_event_counted:
-
-                self.face_event_counted = True
-
-                self.face_violations += 1
-
-                return self._face_action(
-                    face_confidence,
-                    now
-                )
-
-        # ==================================================
-        # STILL WAITING
-        # ==================================================
-
-        return {
             "action":
                 "NORMAL",
 
             "severity":
                 "LOW",
 
-            "face_detected":
-                False,
+            **self._counts(),
 
-            "face_confidence":
-                face_confidence,
-
-            "face_violations":
-                self.face_violations,
-
-            "phone_violations":
-                self.phone_violations,
-
-            "head_violations":
-                self.head_violations,
-
-            "browser_violations":
-                self.browser_violations,
+            **extra,
 
             "timestamp":
                 now
         }
 
     # ======================================================
-    # FACE ACTION
+    # WARNING
     # ======================================================
 
-    def _face_action(
-        self,
-        face_confidence,
-        now
-    ):
-
-        count = self.face_violations
-
-        # ==================================================
-        # THIRD FACE VIOLATION
-        # ==================================================
-
-        if (
-            count
-            >=
-            self.FACE_TERMINATE_THRESHOLD
-        ):
-
-            self.exam_terminated = True
-
-            return {
-                "action":
-                    "TERMINATE_EXAM",
-
-                "severity":
-                    "HIGH",
-
-                "reason":
-                    "Face was not detected three times.",
-
-                "warning":
-                    False,
-
-                "pause":
-                    False,
-
-                "face_detected":
-                    False,
-
-                "face_confidence":
-                    face_confidence,
-
-                "face_violations":
-                    self.face_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "head_violations":
-                    self.head_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # FIRST / SECOND FACE VIOLATION
-        # ==================================================
-
-        return {
-            "action":
-                "WARNING",
-
-            "severity":
-                "MEDIUM",
-
-            "reason":
-                f"Face not detected. "
-                f"Warning {count}/2.",
-
-            "warning":
-                True,
-
-            "pause":
-                False,
-
-            "face_detected":
-                False,
-
-            "face_confidence":
-                face_confidence,
-
-            "face_violations":
-                self.face_violations,
-
-            "phone_violations":
-                self.phone_violations,
-
-            "head_violations":
-                self.head_violations,
-
-            "browser_violations":
-                self.browser_violations,
-
-            "timestamp":
-                now
-        }
-
-    # ======================================================
-    # HEAD POSE PROCESSOR
-    # ======================================================
-
-    def process_head_pose(
-        self,
-        head_result
-    ):
-
-        now = time.time()
-
-        # ==================================================
-        # SAFETY CHECK
-        # ==================================================
-
-        if not isinstance(
-            head_result,
-            dict
-        ):
-
-            return self._normal_response(now)
-
-        # ==================================================
-        # ALREADY TERMINATED
-        # ==================================================
-
-        if self.exam_terminated:
-
-            return self._termination_response(
-                "Exam already terminated.",
-                now
-            )
-
-        # ==================================================
-        # READ HEAD STATUS
-        # ==================================================
-
-        head_status = head_result.get(
-            "status",
-            "UNKNOWN"
-        )
-
-        # ==================================================
-        # NORMAL HEAD POSITION
-        # ==================================================
-
-        if head_status in (
-            "LOOKING_CENTER",
-            "UNKNOWN",
-            "NORMAL"
-        ):
-
-            # Student returned to normal position.
-            #
-            # This resets the continuous event.
-            #
-            # The next head turn can therefore become
-            # a new violation.
-
-            self.head_violation_start = None
-
-            self.head_event_counted = False
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "head_status":
-                    head_status,
-
-                "head_violations":
-                    self.head_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # HEAD TURN DETECTED
-        # ==================================================
-
-        if head_status not in (
-            "LOOKING_LEFT",
-            "LOOKING_RIGHT",
-            "LOOKING_UP",
-            "LOOKING_DOWN",
-            "HEAD_TURNED"
-        ):
-
-            # Unknown head status should not create
-            # a violation.
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "head_status":
-                    head_status,
-
-                "head_violations":
-                    self.head_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # START CONTINUOUS HEAD-TURN TIMER
-        # ==================================================
-
-        if self.head_violation_start is None:
-
-            self.head_violation_start = now
-
-            self.head_event_counted = False
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "head_status":
-                    head_status,
-
-                "head_violations":
-                    self.head_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # CALCULATE PERSISTENCE
-        # ==================================================
-
-        persistence_time = (
-            now -
-            self.head_violation_start
-        )
-
-        # ==================================================
-        # WAIT UNTIL 3 SECONDS
-        # ==================================================
-
-        if (
-            persistence_time
-            <
-            self.VIOLATION_PERSISTENCE_SECONDS
-        ):
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "head_status":
-                    head_status,
-
-                "head_persistence":
-                    round(
-                        persistence_time,
-                        2
-                    ),
-
-                "head_violations":
-                    self.head_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # SAME CONTINUOUS EVENT
-        # ==================================================
-
-        if self.head_event_counted:
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "head_status":
-                    head_status,
-
-                "head_violations":
-                    self.head_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # COUNT ONE HEAD VIOLATION
-        # ==================================================
-
-        self.head_event_counted = True
-
-        self.head_violations += 1
-
-        count = self.head_violations
-
-        # ==================================================
-        # SECOND HEAD VIOLATION
-        # ==================================================
-
-        if (
-            count
-            >=
-            self.HEAD_TERMINATE_THRESHOLD
-        ):
-
-            self.exam_terminated = True
-
-            return {
-                "action":
-                    "TERMINATE_EXAM",
-
-                "severity":
-                    "HIGH",
-
-                "reason":
-                    "Maximum head-pose violations exceeded.",
-
-                "warning":
-                    False,
-
-                "pause":
-                    False,
-
-                "pause_duration":
-                    0,
-
-                "head_status":
-                    head_status,
-
-                "head_violations":
-                    self.head_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # FIRST HEAD VIOLATION
-        # ==================================================
-
-        return {
-            "action":
-                "PAUSE_EXAM",
-
-            "severity":
-                "MEDIUM",
-
-            "reason":
-                f"Head turned detected. "
-                f"Warning {count}/1.",
-
-            "warning":
-                True,
-
-            "pause":
-                True,
-
-            "pause_duration":
-                10,
-
-            "head_status":
-                head_status,
-
-            "head_violations":
-                self.head_violations,
-
-            "phone_violations":
-                self.phone_violations,
-
-            "face_violations":
-                self.face_violations,
-
-            "browser_violations":
-                self.browser_violations,
-
-            "timestamp":
-                now
-        }
-
-    # ======================================================
-    # BROWSER VIOLATION PROCESSOR
-    # ======================================================
-
-    def process_browser_violation(
-        self,
-        event_name,
-        metadata=None
-    ):
-
-        now = time.time()
-
-        if metadata is None:
-
-            metadata = {}
-
-        # ==================================================
-        # ALREADY TERMINATED
-        # ==================================================
-
-        if self.exam_terminated:
-
-            return self._termination_response(
-                "Exam already terminated.",
-                now
-            )
-
-        # ==================================================
-        # ONLY TAB/FULLSCREEN COUNT
-        # ==================================================
-
-        if event_name not in {
-            "TAB_SWITCH",
-            "FULLSCREEN_EXIT"
-        }:
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "browser_event":
-                    event_name,
-
-                "ignored":
-                    True,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # DUPLICATE EVENT COOLDOWN
-        # ==================================================
-
-        last_time = (
-            self.last_browser_violation_time.get(
-                event_name,
-                0.0
-            )
-        )
-
-        if (
-            now - last_time
-            < 1.5
-        ):
-
-            return {
-                "action":
-                    "NORMAL",
-
-                "severity":
-                    "LOW",
-
-                "browser_event":
-                    event_name,
-
-                "duplicate":
-                    True,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # COUNT
-        # ==================================================
-
-        self.last_browser_violation_time[
-            event_name
-        ] = now
-
-        self.browser_violations += 1
-
-        count = self.browser_violations
-
-        # ==================================================
-        # FOURTH BROWSER VIOLATION
-        # ==================================================
-
-        if (
-            count
-            >=
-            self.BROWSER_TERMINATE_THRESHOLD
-        ):
-
-            self.exam_terminated = True
-
-            return {
-                "action":
-                    "TERMINATE_EXAM",
-
-                "severity":
-                    "HIGH",
-
-                "reason":
-                    "Maximum tab-switch/fullscreen violations exceeded.",
-
-                "warning":
-                    False,
-
-                "pause":
-                    False,
-
-                "browser_event":
-                    event_name,
-
-                "browser_violations":
-                    self.browser_violations,
-
-                "phone_violations":
-                    self.phone_violations,
-
-                "face_violations":
-                    self.face_violations,
-
-                "head_violations":
-                    self.head_violations,
-
-                "metadata":
-                    metadata,
-
-                "timestamp":
-                    now
-            }
-
-        # ==================================================
-        # FIRST / SECOND / THIRD
-        # ==================================================
-
-        return {
-            "action":
-                "WARNING",
-
-            "severity":
-                "MEDIUM",
-
-            "reason":
-                f"{event_name} detected. "
-                f"Warning {count}/3.",
-
-            "warning":
-                True,
-
-            "pause":
-                False,
-
-            "browser_event":
-                event_name,
-
-            "browser_violations":
-                self.browser_violations,
-
-            "phone_violations":
-                self.phone_violations,
-
-            "face_violations":
-                self.face_violations,
-
-            "head_violations":
-                self.head_violations,
-
-            "metadata":
-                metadata,
-
-            "timestamp":
-                now
-        }
-
-    # ======================================================
-    # NORMAL RESPONSE
-    # ======================================================
-
-    def _normal_response(
-        self,
-        now
-    ):
-
-        return {
-            "action":
-                "NORMAL",
-
-            "severity":
-                "LOW",
-
-            "phone_detected":
-                False,
-
-            "phone_confidence":
-                0.0,
-
-            "face_detected":
-                True,
-
-            "phone_detections":
-                self.phone_detections,
-
-            "phone_violations":
-                self.phone_violations,
-
-            "face_violations":
-                self.face_violations,
-
-            "head_violations":
-                self.head_violations,
-
-            "browser_violations":
-                self.browser_violations,
-
-            "timestamp":
-                now
-        }
-
-    # ======================================================
-    # TERMINATION RESPONSE
-    # ======================================================
-
-    def _termination_response(
+    def _warning(
         self,
         reason,
-        now
+        violation_type,
+        now,
+        **extra
     ):
 
         return {
+
+            "action":
+                "WARNING",
+
+            "severity":
+                "MEDIUM",
+
+            "reason":
+                reason,
+
+            "violation_type":
+                violation_type,
+
+            "warning":
+                True,
+
+            "pause":
+                False,
+
+            **self._counts(),
+
+            **extra,
+
+            "timestamp":
+                now
+        }
+
+    # ======================================================
+    # PAUSE
+    # ======================================================
+
+    def _pause(
+        self,
+        reason,
+        violation_type,
+        now,
+        duration=10,
+        **extra
+    ):
+
+        return {
+
+            "action":
+                "PAUSE_EXAM",
+
+            "severity":
+                "MEDIUM",
+
+            "reason":
+                reason,
+
+            "violation_type":
+                violation_type,
+
+            "warning":
+                True,
+
+            "pause":
+                True,
+
+            "pause_duration":
+                duration,
+
+            **self._counts(),
+
+            **extra,
+
+            "timestamp":
+                now
+        }
+
+    # ======================================================
+    # TERMINATE
+    # ======================================================
+
+    def _terminate(
+        self,
+        reason,
+        now,
+        violation_type=None,
+        **extra
+    ):
+
+        result = {
+
             "action":
                 "TERMINATE_EXAM",
 
@@ -1240,24 +270,721 @@ class FraudEngine:
             "pause":
                 False,
 
-            "phone_violations":
-                self.phone_violations,
+            "pause_duration":
+                0,
 
-            "face_violations":
-                self.face_violations,
+            **self._counts(),
 
-            "head_violations":
-                self.head_violations,
-
-            "browser_violations":
-                self.browser_violations,
+            **extra,
 
             "timestamp":
                 now
         }
 
+        if violation_type:
+
+            result[
+                "violation_type"
+            ] = violation_type
+
+        return result
+
     # ======================================================
-    # RESET ENGINE
+    # TERMINATION CHECK
+    # ======================================================
+
+    def _check_terminated(
+        self,
+        now
+    ):
+
+        if self.exam_terminated:
+
+            return self._terminate(
+                "Exam already terminated.",
+                now
+            )
+
+        return None
+
+    # ======================================================
+    # PHONE
+    # ======================================================
+
+    def process(
+        self,
+        phone_result
+    ):
+
+        now = time.time()
+
+        if not isinstance(
+            phone_result,
+            dict
+        ):
+
+            return self._normal(
+                now
+            )
+
+        result = self._check_terminated(
+            now
+        )
+
+        if result:
+
+            return result
+
+        phone_status = phone_result.get(
+            "status",
+            "NO_PHONE"
+        )
+
+        detected = (
+            phone_status ==
+            "PHONE_DETECTED"
+        )
+
+        confidence = float(
+            phone_result.get(
+                "confidence",
+                0.0
+            ) or 0.0
+        )
+
+        # --------------------------------------------------
+        # NO PHONE
+        # --------------------------------------------------
+
+        if not detected:
+
+            self.phone_violation_start = None
+
+            self.phone_event_counted = False
+
+            return self._normal(
+
+                now,
+
+                phone_detected=False,
+
+                phone_confidence=confidence
+            )
+
+        # --------------------------------------------------
+        # PHONE DETECTED
+        # --------------------------------------------------
+
+        self.phone_detections += 1
+
+        if self.phone_violation_start is None:
+
+            self.phone_violation_start = now
+
+            self.phone_event_counted = False
+
+        persistence = (
+            now -
+            self.phone_violation_start
+        )
+
+        if (
+            persistence >=
+            self.VIOLATION_PERSISTENCE_SECONDS
+            and
+            not self.phone_event_counted
+        ):
+
+            self.phone_event_counted = True
+
+            self.phone_violations += 1
+
+            # SECOND PHONE VIOLATION
+            if self.phone_violations >= 2:
+
+                self.exam_terminated = True
+
+                return self._terminate(
+
+                    "Mobile phone detected for the second violation.",
+
+                    now,
+
+                    "MOBILE_PHONE",
+
+                    phone_detected=True,
+
+                    phone_confidence=confidence
+                )
+
+            # FIRST PHONE VIOLATION
+            return self._pause(
+
+                "Mobile phone detected. First violation.",
+
+                "MOBILE_PHONE",
+
+                now,
+
+                duration=10,
+
+                phone_detected=True,
+
+                phone_confidence=confidence
+            )
+
+        return self._normal(
+
+            now,
+
+            phone_detected=True,
+
+            phone_confidence=confidence,
+
+            phone_persistence=round(
+                persistence,
+                2
+            )
+        )
+
+    # ======================================================
+    # FACE
+    # ======================================================
+
+    def process_face(
+        self,
+        face_result
+    ):
+
+        now = time.time()
+
+        if not isinstance(
+            face_result,
+            dict
+        ):
+
+            return self._normal(
+                now
+            )
+
+        result = self._check_terminated(
+            now
+        )
+
+        if result:
+
+            return result
+
+        face_status = str(
+            face_result.get(
+                "status",
+                "FACE_MISSING"
+            )
+        ).upper()
+
+        face_count = int(
+            face_result.get(
+                "face_count",
+                0
+            ) or 0
+        )
+
+        # IMPORTANT:
+        #
+        # face_presence.py returns:
+        #
+        # FACE_PRESENT
+        #
+        # not FACE_DETECTED.
+
+        face_detected = (
+            face_status in {
+                "FACE_PRESENT",
+                "FACE_DETECTED"
+            }
+            and
+            face_count == 1
+        )
+
+        # --------------------------------------------------
+        # FACE PRESENT
+        # --------------------------------------------------
+
+        if face_detected:
+
+            self.face_violation_start = None
+
+            self.face_event_counted = False
+
+            return self._normal(
+
+                now,
+
+                face_detected=True,
+
+                face_count=face_count
+            )
+
+        # --------------------------------------------------
+        # FACE MISSING / MULTIPLE
+        # --------------------------------------------------
+
+        if self.face_violation_start is None:
+
+            self.face_violation_start = now
+
+            self.face_event_counted = False
+
+        persistence = (
+            now -
+            self.face_violation_start
+        )
+
+        # --------------------------------------------------
+        # WAIT 3 SECONDS
+        # --------------------------------------------------
+
+        if (
+            persistence <
+            self.VIOLATION_PERSISTENCE_SECONDS
+        ):
+
+            return self._normal(
+
+                now,
+
+                face_detected=False,
+
+                face_count=face_count,
+
+                face_persistence=round(
+                    persistence,
+                    2
+                )
+            )
+
+        # --------------------------------------------------
+        # COUNT ONLY ONCE
+        # --------------------------------------------------
+
+        if self.face_event_counted:
+
+            return self._normal(
+
+                now,
+
+                face_detected=False,
+
+                face_count=face_count,
+
+                face_violations=
+                    self.face_violations
+            )
+
+        self.face_event_counted = True
+
+        self.face_violations += 1
+
+        # --------------------------------------------------
+        # SECOND FACE VIOLATION
+        # --------------------------------------------------
+
+        if (
+            self.face_violations >=
+            self.FACE_TERMINATE_THRESHOLD
+        ):
+
+            self.exam_terminated = True
+
+            return self._terminate(
+
+                "Face was not detected for the second violation.",
+
+                now,
+
+                "FACE_NOT_DETECTED",
+
+                face_detected=False,
+
+                face_count=face_count
+            )
+
+        # --------------------------------------------------
+        # FIRST FACE VIOLATION
+        # --------------------------------------------------
+
+        return self._warning(
+
+            "Face was not detected. First violation.",
+
+            "FACE_NOT_DETECTED",
+
+            now,
+
+            face_detected=False,
+
+            face_count=face_count
+        )
+
+    # ======================================================
+    # GENERIC EVENT COUNTER
+    # ======================================================
+
+    def _process_event_counter(
+
+        self,
+
+        detected,
+
+        event_name,
+
+        count_attribute,
+
+        active_attribute,
+
+        warning_threshold,
+
+        terminate_threshold,
+
+        now
+    ):
+
+        count = getattr(
+            self,
+            count_attribute
+        )
+
+        active = getattr(
+            self,
+            active_attribute
+        )
+
+        # --------------------------------------------------
+        # EVENT ENDED
+        # --------------------------------------------------
+
+        if not detected:
+
+            setattr(
+                self,
+                active_attribute,
+                False
+            )
+
+            return self._normal(
+
+                now,
+
+                violation_type=
+                    event_name,
+
+                event_count=
+                    count
+            )
+
+        # --------------------------------------------------
+        # SAME EVENT
+        # --------------------------------------------------
+
+        if active:
+
+            return self._normal(
+
+                now,
+
+                violation_type=
+                    event_name,
+
+                event_count=
+                    count
+            )
+
+        # --------------------------------------------------
+        # NEW EVENT
+        # --------------------------------------------------
+
+        setattr(
+            self,
+            active_attribute,
+            True
+        )
+
+        count += 1
+
+        setattr(
+            self,
+            count_attribute,
+            count
+        )
+
+        print(
+            f"{event_name} EVENT: {count}"
+        )
+
+        # --------------------------------------------------
+        # 10 -> TERMINATE
+        # --------------------------------------------------
+
+        if count >= terminate_threshold:
+
+            self.exam_terminated = True
+
+            return self._terminate(
+
+                f"{event_name} count reached {count}.",
+
+                now,
+
+                event_name,
+
+                event_count=count
+            )
+
+        # --------------------------------------------------
+        # 5 -> WARNING
+        # --------------------------------------------------
+
+        if count == warning_threshold:
+
+            return self._warning(
+
+                f"{event_name} count reached {count}.",
+
+                event_name,
+
+                now,
+
+                event_count=count
+            )
+
+        return self._normal(
+
+            now,
+
+            violation_type=
+                event_name,
+
+            event_count=
+                count
+        )
+
+    # ======================================================
+    # BLINK
+    # ======================================================
+
+    def process_blink(
+        self,
+        blink_result
+    ):
+
+        now = time.time()
+
+        if not isinstance(
+            blink_result,
+            dict
+        ):
+
+            return self._normal(
+                now
+            )
+
+        result = self._check_terminated(
+            now
+        )
+
+        if result:
+
+            return result
+
+        blink = bool(
+            blink_result.get(
+                "blink_detected",
+
+                blink_result.get(
+                    "is_blink",
+
+                    blink_result.get(
+                        "blink",
+                        False
+                    )
+                )
+            )
+        )
+
+        return self._process_event_counter(
+
+            detected=blink,
+
+            event_name="BLINK",
+
+            count_attribute=
+                "blink_count",
+
+            active_attribute=
+                "blink_event_active",
+
+            warning_threshold=
+                self.BLINK_WARNING_THRESHOLD,
+
+            terminate_threshold=
+                self.BLINK_TERMINATE_THRESHOLD,
+
+            now=now
+        )
+
+    # ======================================================
+    # MOUTH
+    # ======================================================
+
+    def process_mouth(
+        self,
+        mouth_result
+    ):
+
+        now = time.time()
+
+        if not isinstance(
+            mouth_result,
+            dict
+        ):
+
+            return self._normal(
+                now
+            )
+
+        result = self._check_terminated(
+            now
+        )
+
+        if result:
+
+            return result
+
+        status = str(
+
+            mouth_result.get(
+
+                "status",
+
+                mouth_result.get(
+                    "mouth_status",
+                    "NORMAL"
+                )
+            )
+
+        ).upper()
+
+        mouth_violation = (
+            status in {
+                "MOUTH_OPEN",
+                "OPEN_MOUTH",
+                "MOUTH_ABNORMAL",
+                "MOUTH_VIOLATION"
+            }
+        )
+
+        return self._process_event_counter(
+
+            detected=
+                mouth_violation,
+
+            event_name=
+                "MOUTH",
+
+            count_attribute=
+                "mouth_count",
+
+            active_attribute=
+                "mouth_event_active",
+
+            warning_threshold=
+                self.MOUTH_WARNING_THRESHOLD,
+
+            terminate_threshold=
+                self.MOUTH_TERMINATE_THRESHOLD,
+
+            now=now
+        )
+
+    # ======================================================
+    # EYE TRACKING
+    # ======================================================
+
+    def process_eye_tracking(
+        self,
+        eye_result
+    ):
+
+        now = time.time()
+
+        if not isinstance(
+            eye_result,
+            dict
+        ):
+
+            return self._normal(
+                now
+            )
+
+        result = self._check_terminated(
+            now
+        )
+
+        if result:
+
+            return result
+
+        status = str(
+
+            eye_result.get(
+
+                "status",
+
+                eye_result.get(
+                    "eye_status",
+                    "NORMAL"
+                )
+            )
+
+        ).upper()
+
+        eye_violation = (
+            status in {
+                "LOOKING_LEFT",
+                "LOOKING_RIGHT",
+                "LOOKING_UP",
+                "LOOKING_DOWN",
+                "EYES_AWAY",
+                "EYE_VIOLATION",
+                "GAZE_AWAY"
+            }
+        )
+
+        return self._process_event_counter(
+
+            detected=
+                eye_violation,
+
+            event_name=
+                "EYE_TRACKING",
+
+            count_attribute=
+                "eye_tracking_count",
+
+            active_attribute=
+                "eye_event_active",
+
+            warning_threshold=
+                self.EYE_WARNING_THRESHOLD,
+
+            terminate_threshold=
+                self.EYE_TERMINATE_THRESHOLD,
+
+            now=now
+        )
+
+    # ======================================================
+    # RESET
     # ======================================================
 
     def reset(self):
@@ -1276,14 +1003,16 @@ class FraudEngine:
 
         self.face_event_counted = False
 
-        self.head_violations = 0
+        self.blink_count = 0
 
-        self.head_violation_start = None
+        self.blink_event_active = False
 
-        self.head_event_counted = False
+        self.mouth_count = 0
 
-        self.browser_violations = 0
+        self.mouth_event_active = False
 
-        self.last_browser_violation_time = {}
+        self.eye_tracking_count = 0
+
+        self.eye_event_active = False
 
         self.exam_terminated = False

@@ -5,26 +5,6 @@ import mediapipe as mp
 
 
 class FaceMeshDetector:
-    """
-    MediaPipe Face Landmarker using the modern Tasks API.
-
-    Returns:
-
-    {
-        "face_count": int,
-        "landmarks": [
-            [
-                {
-                    "x": float,
-                    "y": float,
-                    "z": float
-                }
-            ]
-        ],
-        "blendshapes": [],
-        "transformation_matrices": []
-    }
-    """
 
     def __init__(
         self,
@@ -401,69 +381,3 @@ class FaceMeshDetector:
 
 
 
-'''import cv2
-import mediapipe as mp
-
-
-class FaceMeshDetector:
-
-    def __init__(self):
-
-        self.mp_face_mesh = mp.solutions.face_mesh
-
-        self.mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=2,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
-
-        self.drawer = mp.solutions.drawing_utils
-
-        self.mesh_style = self.mp_face_mesh.FACEMESH_TESSELATION
-
-    def detect(self, frame):
-
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        results = self.mesh.process(rgb)
-
-        faces = []
-
-        if results.multi_face_landmarks:
-
-            h, w, _ = frame.shape
-
-            for face_landmarks in results.multi_face_landmarks:
-
-                landmarks = []
-
-                for landmark in face_landmarks.landmark:
-
-                    x = int(landmark.x * w)
-                    y = int(landmark.y * h)
-
-                    landmarks.append((x, y))
-
-                faces.append({
-                    "landmarks": landmarks,
-                    "mesh": face_landmarks
-                })
-
-        return {
-            "face_count": len(faces),
-            "faces": faces
-        }
-
-    def draw_mesh(self, frame, faces):
-
-        for face in faces:
-
-            self.drawer.draw_landmarks(
-                frame,
-                face["mesh"],
-                self.mesh_style
-            )
-
-        return frame'''
