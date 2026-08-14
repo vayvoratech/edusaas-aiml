@@ -173,4 +173,9 @@ uploads/
 *.so
 Fraud_detection/node_server/node_modules/
 Fraud_detection/node_server/package.json
-Fraud_detection/node_server/package-lock.json
+Fraud_detection/node_server/package-lock.
+
+models/fraud/
+models/sentiment/
+models/toxicity/
+package-lock.json
