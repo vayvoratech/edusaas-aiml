@@ -1,0 +1,25 @@
+name: EduSaaS AIML CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Pipeline
+        run: echo "Pipeline triggered successfully"
+
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Dependency Installation
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
