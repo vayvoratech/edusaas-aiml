@@ -1,30 +1,20 @@
-name: CI Pipeline
+name: EduSaaS AIML CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      VAYVORA: ${{ secrets.VAYVORA }}
-
     steps:
-      - name: Checkout code
+      - name: Trigger Pipeline
+        run: echo "Pipeline triggered successfully"
+        #step 5
+      - name: Checkout Source Code
         uses: actions/checkout@v4
-
-      - name: Run CI checks
-        run: echo "CI pipeline is running successfully"
-
-      - name: Linting
-        run: echo "Linting completed successfully"
-
-      - name: Unit Tests
-        run: echo "Unit tests passed successfully"
-
-      - name: Build Check
-        run: echo "Build completed successfully"
