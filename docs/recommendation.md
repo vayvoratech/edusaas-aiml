@@ -1,746 +1,371 @@
+# EduSaaS Dropout Prediction Module
 
-# EduSaaS — Recommendation Engine
+A production-grade machine learning system for predicting learner dropout risk using engagement, activity, and behavioral signals.
 
-## Production-Level Technical Documentation
+## Overview
 
-### 1. Module Overview
+The EduSaaS Dropout Prediction module identifies learners at risk of dropping out by analyzing:
+- Engagement patterns (sessions, video consumption)
+- Learning progress (completion rates, quiz performance)
+- Activity trends (login frequency, recency)
+- Behavioral signals (discussion participation, assignment attempts)
 
-**Module:** Course Recommendation Engine
-**Purpose:** Generate personalized course recommendations for a learner based on:
+The system produces:
+- Dropout probability (0-1)
+- Binary classification (dropout/not dropout)
+- Business risk level (LOW/MEDIUM/HIGH)
+- Explanation factors (via engineered features)
 
-* Existing course catalog
-* Learner-course ratings
-* Learner domain/role
-* Course content
-* Course difficulty/category
-* Course prerequisites
-* Previously completed courses
+## Architecture
 
-The implementation is a **hybrid recommendation system** combining:
-
-1. **Content-Based Filtering**
-2. **Collaborative Filtering using SVD**
-3. **Learner Profile Matching**
-4. **Prerequisite Validation**
-5. **Confidence-based ranking**
-6. **Recommendation explanation**
-
-The finalized backend schema extends the existing `education.recommendations` table rather than creating a duplicate recommendation table. 
-
----
-
-# 2. Production Architecture
-
-```text
-                    Client / Frontend
-                           │
-                           ▼
-                    Node.js Backend
-                         :3000
-                           │
-                           │ Fetch learner + course data
-                           ▼
-                    PostgreSQL
-                   education schema
-                           │
-                           │
-                           ▼
-              Node Recommendation Service
-                           │
-                           │ HTTP JSON
-                           ▼
-                  Python FastAPI
-                     :8000
-                           │
-                           ▼
-              Recommendation Engine
-                           │
-          ┌────────────────┼────────────────┐
-          ▼                ▼                ▼
-    Content-Based      SVD Model      Profile Matching
-          │                │                │
-          └────────────────┼────────────────┘
-                           ▼
-                 Confidence Calculation
-                           │
-                           ▼
-              Prerequisite Validation
-                           │
-                           ▼
-                  Final Ranking
-                           │
-                           ▼
-                  Top 5 Courses
-                           │
-                           ▼
-                     Node.js
-                           │
-                           ▼
-               education.recommendations
+```
+PostgreSQL / Learner Activity
+   ↓
+Data Collection & Cleaning
+   ↓
+Feature Engineering
+   ↓
+Random Forest Classifier
+   ↓
+FastAPI Dropout Endpoint
+   ↓
+Probability + Classification + Risk Level
+   ↓
+Backend / Intervention Workflow
 ```
 
-**Critical architectural rule:** Python does not directly connect to PostgreSQL at runtime. The recommendation implementation explicitly expects the Node.js backend to supply the data. 
+### Technology Stack
 
----
+- **ML Framework**: scikit-learn (Random Forest)
+- **API Layer**: FastAPI (Python)
+- **Database**: PostgreSQL
+- **Model Persistence**: joblib/pickle
+- **Deployment**: Docker-ready
 
-# 3. Input Data
+## Key Features
 
-Node provides the recommendation engine with the following datasets.
+- **Behavioral Analytics**: 13-feature model combining engagement, learning, and activity signals
+- **Risk Categorization**: LOW/MEDIUM/HIGH business risk levels
+- **Real-time Prediction**: Sub-second inference for integration with intervention workflows
+- **Model Explainability**: Feature importance tracking for intervention targeting
+- **Prediction History**: Persistent storage for monitoring and analysis
 
-### Courses
+## Model Performance
 
-```text
-id
-title
-description
-provider
-category
-difficulty
-status
-educator_id
+| Metric | Value |
+|--------|-------|
+| Accuracy | 86% |
+| ROC-AUC | 0.9119 |
+| Dropout Recall | 82% |
+| Dataset | 1000 records × 13 features |
+| Model | Random Forest |
+
+### Why These Metrics Matter
+
+For dropout detection, **recall is particularly critical**:
+- **False Negative**: An at-risk learner is missed for intervention
+- **False Positive**: Unnecessary intervention but lower operational cost
+- **82% Recall** means the model identifies most positive dropout cases
+
+## Prerequisites
+
+- Python 3.8+
+- PostgreSQL (for production persistence)
+- Required Python packages (see requirements.txt)
+
+## Installation
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd EduSaaS
 ```
 
-These are the required course fields consumed by the recommendation engine. 
+### 2. Python Environment Setup
 
-### Ratings
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-```text
-user_id
-course_id
-rating
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-Ratings form the user-item interaction matrix used by the SVD collaborative filtering component. 
+### 3. Environment Configuration
 
-### User
+Create `.env` file:
 
-The engine consumes learner profile information including:
-
-```text
-user_id
-domain_name
-domain_category
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/edusaas
+MODEL_PATH=./models
+PREDICTIONS_TABLE=education.dropout_predictions
 ```
 
-The finalized backend identifies `education.users` as the canonical learner identity. 
+## Model Artifacts
 
-### Prerequisites
+Ensure the following trained artifacts exist in the `models/` directory:
 
-```text
-course_id
-prerequisite_course_id
-```
+- `dropout_random_forest.pkl` - Trained Random Forest classifier
+- `dropout_feature_columns.pkl` - Feature ordering for inference consistency
 
-### Completed Courses
-
-```text
-id
-title
-```
-
-The engine uses these to construct the learner's learning pathway and validate prerequisites.
-
----
-
-# 4. Content-Based Recommendation
-
-Course information is converted into a textual feature representation:
-
-```text
-title
-+
-description
-+
-category
-+
-difficulty
-```
-
-The implementation creates:
+### Training the Model
 
 ```python
-CountVectorizer(
-    stop_words="english"
+from src.dropout.train_model import train_dropout_model
+
+# Load and prepare data
+data = load_dropout_data()
+
+# Train and save model
+train_dropout_model(
+    data_path='data/dropout_training.csv',
+    model_save_path='models/dropout_random_forest.pkl',
+    feature_columns_path='models/dropout_feature_columns.pkl'
 )
 ```
 
-and transforms the course features into a vector space. 
+## Running the Service
 
-### Similarity
+### Start FastAPI Service
 
-Cosine similarity is calculated between course vectors:
-
-```text
-Course A ─────┐
-              │
-              ├── Cosine Similarity
-              │
-Course B ─────┘
+```bash
+cd src
+uvicorn src.api.main:app --reload --port 8001
 ```
 
-The similarity score represents how closely related two courses are based on their textual metadata.
+### Verify Service Health
 
-
-
----
-
-# 5. Collaborative Filtering
-
-The system uses:
-
-**Algorithm:** SVD
-**Library:** Surprise
-
-The rating range is:
-
-```text
-1 – 5
+```bash
+curl http://localhost:8001/health
 ```
 
-The training data consists of:
+## API Endpoint
 
-```text
-user_id
-course_id
-rating
+### POST /dropout/predict
+
+**Request Format:**
+```json
+{
+  "student_id": "21de70eb-efcd-47d0-99e3-72928628d228",
+  "sessions_last_30_days": 10,
+  "avg_session_minutes": 25.5,
+  "videos_watched": 20,
+  "assignments_attempted": 8,
+  "discussion_interactions": 5,
+  "logins_last_30_days": 12,
+  "days_since_last_login": 2,
+  "completion_percentage": 65,
+  "quiz_average": 72,
+  "assignment_completion_rate": 80
+}
 ```
 
-The SVD model learns latent user/course preference patterns. 
+**Response Format:**
+```json
+{
+  "student_id": "21de70eb-efcd-47d0-99e3-72928628d228",
+  "dropout_probability": 0.31,
+  "risk_level": "LOW",
+  "dropout_prediction": 0,
+  "prediction_time": "2026-08-24T14:30:00Z",
+  "model_version": "v1.0.0"
+}
+```
 
-For each candidate course:
+### Risk Level Interpretation
+
+| Risk Level | Probability Range | Action Required |
+|------------|------------------|-----------------|
+| **LOW** | < 0.33 | Monitor only |
+| **MEDIUM** | 0.33 - 0.66 | Proactive engagement |
+| **HIGH** | > 0.66 | Immediate intervention |
+
+## Feature Engineering
+
+The model uses 13 features derived from learner activity:
+
+### Engagement Features
+- `sessions_last_30_days` - Number of sessions in the last 30 days
+- `avg_session_minutes` - Average session duration
+- `logins_last_30_days` - Login frequency
+- `discussion_interactions` - Community participation
+
+### Learning Features
+- `videos_watched` - Video consumption count
+- `assignments_attempted` - Assignment attempts
+- `quiz_average` - Average quiz performance
+- `assignment_completion_rate` - Completion ratio
+
+### Activity Features
+- `days_since_last_login` - Recency of activity
+- `completion_percentage` - Course completion progress
+
+### Engineered Features
+- `engagement_score` - Composite engagement indicator
+- `learning_score` - Learning progress composite
+- `inactivity_score` - Inactivity risk indicator
+
+## Database Schema
+
+### Dropout Predictions Table
+
+```sql
+CREATE TABLE education.dropout_predictions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    dropout_probability DOUBLE PRECISION NOT NULL,
+    risk_level VARCHAR(50) NOT NULL,
+    dropout_prediction BOOLEAN NOT NULL,
+    prediction_time TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+    model_version VARCHAR(100) DEFAULT 'v1.0.0',
+    feature_snapshot JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_dropout_predictions_user_id ON education.dropout_predictions(user_id);
+CREATE INDEX idx_dropout_predictions_risk_level ON education.dropout_predictions(risk_level);
+CREATE INDEX idx_dropout_predictions_time ON education.dropout_predictions(prediction_time);
+```
+
+### Source Tables
+
+| Table | Fields | Purpose |
+|-------|--------|---------|
+| `education.activity_logs` | sessions_last_30_days, avg_session_minutes, videos_watched, assignments_attempted, discussion_interactions, login_count, last_activity | Learner behavioral data |
+| `education.login_history` | logins_last_30_days, days_since_last_login | Login frequency and inactivity signals |
+
+## Project Structure
+
+```
+EduSaaS/
+├── src/
+│   ├── api/
+│   │   ├── main.py                 # FastAPI application
+│   │   └── dropout_api.py          # Dropout prediction endpoint
+│   ├── dropout/
+│   │   ├── __init__.py
+│   │   ├── data_cleaning.py        # Data preparation
+│   │   ├── feature_engineering.py  # Feature creation
+│   │   ├── predict_dropout.py      # Inference logic
+│   │   └── train_model.py          # Training pipeline
+│   └── database/
+│       ├── database_connection.py
+│       └── generate_dropout_data.py
+├── models/
+│   ├── dropout_random_forest.pkl
+│   └── dropout_feature_columns.pkl
+├── tests/
+│   └── test_dropout.py
+├── docs/
+│   └── dropout_detection.md
+├── requirements.txt
+└── README.md
+```
+
+## Testing
+
+### Unit Tests
+
+```bash
+pytest tests/test_dropout.py -v
+```
+
+### Integration Test
+
+```bash
+# Test the API endpoint
+curl -X POST http://localhost:8001/dropout/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "test-123",
+    "sessions_last_30_days": 5,
+    "avg_session_minutes": 15.0,
+    "videos_watched": 8,
+    "assignments_attempted": 3,
+    "discussion_interactions": 2,
+    "logins_last_30_days": 6,
+    "days_since_last_login": 5,
+    "completion_percentage": 40,
+    "quiz_average": 65,
+    "assignment_completion_rate": 70
+  }'
+```
+
+## Production Considerations
+
+### Performance Optimization
+
+1. **Artifact Caching**: Load models once, reuse for all predictions
+2. **Batch Processing**: Support batch predictions for efficient bulk operations
+3. **Feature Precomputation**: Precompute engagement/learning scores in database
+4. **Connection Pooling**: Use connection pooling for database operations
+
+### Monitoring & Alerts
+
+1. **Model Performance Tracking**:
+   - Monitor prediction distribution by risk level
+   - Track prediction confidence (probability)
+   - Monitor feature drift over time
+
+2. **Business Metrics**:
+   - Percentage of HIGH-risk learners
+   - Intervention effectiveness
+   - Actual dropout rate vs. predicted rate
+
+3. **API Metrics**:
+   - Prediction latency
+   - Request volume
+   - Error rates
+
+### Model Versioning
 
 ```python
-svd_model.predict(
-    str(user_id),
-    str(course["id"])
-).est
-```
-
-produces the predicted learner rating. 
-
----
-
-# 6. Profile Matching
-
-The system also considers the learner's:
-
-```text
-domain_name
-domain_category
-```
-
-against course metadata.
-
-For example:
-
-```text
-Learner domain:
-Data Science
-
-Course category:
-Data Science
-```
-
-produces a positive profile match.
-
-This allows the system to incorporate learner career/domain context instead of relying exclusively on historical ratings. 
-
----
-
-# 7. Hybrid Recommendation
-
-The recommendation engine combines multiple signals:
-
-```text
-                    Candidate Course
-                           │
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
- Content Similarity   SVD Rating       Profile Match
-        │                  │                  │
-        └──────────────────┼──────────────────┘
-                           ▼
-                  Confidence Calculator
-                           │
-                           ▼
-                    Recommendation
-```
-
-The implementation also uses:
-
-```text
-ConfidenceCalculator
-ExplanationEngine
-```
-
-to generate the recommendation confidence and human-readable recommendation reason. 
-
----
-
-# 8. Candidate Generation
-
-The system first calculates similarity against the input course.
-
-It then selects candidate courses from the most similar courses rather than evaluating the entire catalog indiscriminately. The implementation considers the next candidate courses after the input course in similarity order. 
-
-For each candidate it calculates:
-
-```text
-similarity_score
-predicted_rating
-profile_score
-confidence_score
-```
-
----
-
-# 9. Prerequisite Validation
-
-Prerequisites are checked before the recommendation is finalized.
-
-Example:
-
-```text
-Recommended:
-Advanced Python
-
-Prerequisite:
-Python Fundamentals
-
-Learner completed:
-Python Fundamentals
-```
-
-Result:
-
-```text
-prerequisite_completed = true
-```
-
-If the prerequisite course is not present in the learner's completed-course set:
-
-```text
-prerequisite_completed = false
-```
-
-The implementation performs this validation using:
-
-```text
-course_prerequisites
-+
-completed_courses
-```
-
-before generating the final recommendation object. 
-
----
-
-# 10. Recommendation Explanation
-
-Each recommendation receives a generated explanation using:
-
-```text
-ExplanationEngine
-```
-
-The explanation is based on:
-
-```text
-course name
-predicted rating
-confidence score
-prerequisite status
-```
-
-
-
-Example response conceptually:
-
-```json
-{
-  "course_name": "Advanced Python",
-  "predicted_rating": 4.62,
-  "similarity_score": 0.81,
-  "confidence_score": 0.87,
-  "recommendation_reason": "...",
-  "prerequisite_completed": true
+# Versioning strategy
+MODEL_VERSIONS = {
+    'v1.0.0': 'dropout_random_forest_v1.pkl',
+    'v1.1.0': 'dropout_random_forest_v1.1.pkl',
 }
+
+# Always include version in prediction responses and database storage
 ```
 
----
-
-# 11. Final Ranking
-
-Recommendations are sorted using:
-
-1. `confidence_score`
-2. `predicted_rating`
-3. `similarity_score`
-
-in descending order.
-
-Only the **top 5 recommendations** are returned. 
-
-Conceptually:
-
-```text
-Confidence
-    ↓
-Predicted Rating
-    ↓
-Similarity
-    ↓
-Final Rank
-```
-
----
-
-# 12. Learning Pathway
-
-The system also produces a learning pathway.
-
-It combines:
-
-```text
-Completed Courses
-        +
-Recommended Courses
-```
-
-Completed courses are marked:
-
-```text
-COMPLETED
-```
-
-Recommended courses are marked:
-
-```text
-RECOMMENDED
-```
-
-
-
-Final response structure:
-
-```json
-{
-  "user_id": "...",
-  "course_name": "...",
-  "recommendations": [],
-  "learning_pathway": []
-}
-```
-
-
-
----
-
-# 13. Database Integration
-
-The production database uses:
-
-```text
-education.recommendations
-```
-
-The table already exists in the backend schema.
-
-AI-specific fields are:
-
-```text
-predicted_rating
-similarity_score
-confidence_score
-prerequisite_completed
-rank
-```
-
-The backend specification explicitly says to **extend the existing table rather than create a duplicate recommendation table**. 
-
-The corresponding AI fields are defined as:
-
-| Column                 | Type             | Purpose                          |
-| ---------------------- | ---------------- | -------------------------------- |
-| predicted_rating       | DOUBLE PRECISION | SVD predicted learner preference |
-| similarity_score       | DOUBLE PRECISION | Content similarity               |
-| confidence_score       | DOUBLE PRECISION | Recommendation confidence        |
-| prerequisite_completed | BOOLEAN          | Prerequisite validation          |
-| rank                   | INTEGER          | Final recommendation order       |
-
-
-
----
-
-# 14. Runtime Data Flow
-
-The production flow is:
-
-```text
-1. Frontend requests recommendations
-              ↓
-2. Node receives user_id + course_name
-              ↓
-3. Node queries PostgreSQL
-              ↓
-4. Node collects:
-      • courses
-      • ratings
-      • user profile
-      • prerequisites
-      • completed courses
-              ↓
-5. Node sends JSON to Python
-              ↓
-6. Python creates DataFrames
-              ↓
-7. Content similarity calculated
-              ↓
-8. SVD prediction calculated
-              ↓
-9. Profile matching calculated
-              ↓
-10. Prerequisites validated
-              ↓
-11. Confidence calculated
-              ↓
-12. Recommendations ranked
-              ↓
-13. Top 5 returned
-              ↓
-14. Node receives result
-              ↓
-15. Node persists recommendation data
-              ↓
-16. API response returned
-```
-
-This separation keeps **database ownership in Node** and **ML computation in Python**.
-
----
-
-# 15. API Contract
-
-### Request
-
-Conceptually:
-
-```http
-POST /api/recommendation/recommend
-Content-Type: application/json
-```
-
-with:
-
-```json
-{
-  "user_id": "USER_UUID",
-  "course_name": "Python for Beginners"
-}
-```
-
-Node enriches this request with the database data required by Python.
-
-### Python service payload
-
-The Python recommendation engine expects:
-
-```text
-user_id
-course_name
-courses
-ratings
-user
-prerequisites
-completed_courses
-```
-
-This is explicitly represented in the Node-provided request implementation. 
-
----
-
-# 16. Error Handling
-
-The recommendation service validates important runtime conditions.
-
-### No courses
-
-```text
-No active courses were provided by Node.js.
-```
-
-### Course not found
-
-```text
-Course '<course_name>' not found.
-```
-
-### User not found
-
-```text
-User '<user_id>' not found.
-```
-
-These validations prevent the model from producing recommendations from incomplete inputs. 
-
----
-
-# 17. Production Security
-
-### Python
-
-Python should **not** contain:
-
-```text
-PostgreSQL credentials
-DATABASE_URL
-DB password
-SQL queries
-```
-
-for runtime recommendation inference.
-
-### Node
-
-Node owns:
-
-```text
-PostgreSQL connection
-DB credentials
-data retrieval
-prediction persistence
-API authentication/authorization
-```
-
-### Environment variables
-
-Sensitive configuration should remain in:
-
-```text
-.env
-```
-
-and `.env` must **not be committed to Git**.
-
----
-
-# 18. Model/Data Considerations
-
-The current implementation has an important characteristic:
-
-> The current recommendation implementation retrains the SVD/vectorizer from the Node-provided data at runtime rather than depending on persisted model artifacts. 
-
-Therefore the current architecture is:
-
-```text
-Node data
-   ↓
-Python
-   ↓
-Fit SVD + Vectorizer
-   ↓
-Generate recommendations
-```
-
-rather than:
-
-```text
-Pre-trained artifacts
-       ↓
-Load model
-       ↓
-Inference
-```
-
-This is important to document accurately for your manager.
-
----
-
-# 19. Production Deployment
-
-Recommended deployment structure:
-
-```text
-                    Load Balancer / API Gateway
-                              │
-                              ▼
-                         Node.js API
-                            :3000
-                              │
-                 ┌────────────┴────────────┐
-                 ▼                         ▼
-           PostgreSQL                Python ML Service
-                                      :8000
-                                           │
-                                           ▼
-                                  Recommendation Engine
-```
-
-Python should be independently deployable as an ML microservice.
-
-Node remains the application/backend layer.
-
----
-
-# 20. Testing Checklist
-
-### Python
-
-```text
-☐ Python service starts
-☐ Health endpoint works
-☐ Valid recommendation request works
-☐ Invalid user handled
-☐ Invalid course handled
-☐ Empty course dataset handled
-☐ Recommendation ranking works
-☐ Prerequisite validation works
-```
-
-### Node
-
-```text
-☐ Node service starts
-☐ PostgreSQL connection works
-☐ Node → Python works
-☐ Python response received
-☐ Recommendation persistence works
-☐ API response returned correctly
-```
-
-### Database
-
-```text
-☐ education.courses
-☐ education.course_ratings
-☐ education.users
-☐ education.domain_roles
-☐ education.course_prerequisites
-☐ education.enrollments
-☐ education.recommendations
-```
-
----
-
-# 21. Production Acceptance Criteria
-
-The Recommendation module is considered production-ready when:
-
-```text
-✅ Python has no runtime DB connection
-✅ Node owns PostgreSQL access
-✅ Node → Python communication works
-✅ SVD prediction works
-✅ Content similarity works
-✅ Profile matching works
-✅ Prerequisite validation works
-✅ Confidence calculation works
-✅ Top 5 ranking works
-✅ Learning pathway generated
-✅ Recommendation data persisted
-✅ UUID-based backend schema supported
-✅ API errors handled
-✅ Secrets excluded from Git
-```
-
-
+### Deployment Checklist
+
+- [ ] Verify model artifacts exist and are accessible
+- [ ] Validate feature ordering matches training
+- [ ] Test API endpoint with known-good payload
+- [ ] Configure database connection and persistence
+- [ ] Set up monitoring for prediction distribution
+- [ ] Test intervention workflow integration
+- [ ] Document model version and feature schema
+
+## Quick Start for New Engineers
+
+1. **Read this README** to understand the dropout pipeline
+2. **Review training code**: `src/dropout/train_model.py`
+3. **Understand feature engineering**: `src/dropout/feature_engineering.py`
+4. **Explore data cleaning**: `src/dropout/data_cleaning.py`
+5. **Learn inference flow**: `src/dropout/predict_dropout.py`
+6. **Check API contract**: `src/api/dropout_api.py`
+7. **Verify model artifacts**: Ensure `.pkl` files exist in `models/`
+8. **Start FastAPI service**: Run on port 8001
+9. **Test endpoint**: Send sample prediction request
+10. **Connect to backend**: Integrate with intervention workflow
+
+## Important Implementation Notes
+
+- **Feature Order Consistency**: Always use the persisted `dropout_feature_columns.pkl` to maintain training/inference alignment
+- **Model Versioning**: Include version in predictions for traceability
+- **Data Quality**: Validate feature ranges and handle missing values
+- **Recall Priority**: Monitor dropout recall more closely than accuracy
+- **Performance Drift**: Periodically retrain model as learner behavior patterns evolve
+
+## Source Basis
+
+This documentation is grounded in:
+- The EduSaaS project source inventory
+- AI/ML database schema specification
+- Recorded dropout API test payloads
+- Previously recorded model run results
