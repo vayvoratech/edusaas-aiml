@@ -1,5 +1,5 @@
-from typing import List
 import os
+from typing import List
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -13,20 +13,16 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------
-# Request Schemas
-# ---------------------------------------
-
 class ToxicityRequest(BaseModel):
 
-    student_id: int = Field(
+    student_id: str = Field(
         ...,
-        examples=[101]
+        examples=["2789a8b8-8ed0-496b-a38a-db56b91859ff"]
     )
 
-    discussion_id: int = Field(
+    discussion_id: str = Field(
         ...,
-        examples=[5001]
+        examples=["21de70eb-efcd-47d0-99e3-72928628d228"]
     )
 
     post_text: str = Field(
@@ -42,76 +38,54 @@ class BatchToxicityRequest(BaseModel):
     requests: List[ToxicityRequest]
 
 
-# ---------------------------------------
-# Home
-# ---------------------------------------
-
 @router.get("/")
 def home():
 
     return {
-
+        "success": True,
         "message": "EduSaaS Toxicity Detection API is Running"
-
     }
 
-
-# ---------------------------------------
-# Health Check
-# ---------------------------------------
 
 @router.get("/health")
 def health():
 
     return {
-
+        "success": True,
         "status": "healthy",
-
         "service": "Toxicity Detection API",
-
         "model": "DistilBERT",
-
         "version": os.getenv(
             "MODEL_VERSION",
             "1.0.0"
         )
-
     }
 
-
-# ---------------------------------------
-# Predict Toxicity
-# ---------------------------------------
 
 @router.post("/predict")
 def predict(request: ToxicityRequest):
 
     try:
 
-        return toxicity_service.predict(
-
+        result = toxicity_service.predict(
             student_id=request.student_id,
-
             discussion_id=request.discussion_id,
-
             post_text=request.post_text
-
         )
+
+        return {
+            "success": True,
+            "message": "Toxicity prediction completed successfully.",
+            "data": result
+        }
 
     except Exception as e:
 
         raise HTTPException(
-
             status_code=500,
-
             detail=str(e)
-
         )
 
-
-# ---------------------------------------
-# Batch Prediction
-# ---------------------------------------
 
 @router.post("/batch-predict")
 def batch_predict(
@@ -125,31 +99,25 @@ def batch_predict(
         for item in request.requests:
 
             prediction = toxicity_service.predict(
-
                 student_id=item.student_id,
-
                 discussion_id=item.discussion_id,
-
                 post_text=item.post_text
-
             )
 
             results.append(prediction)
 
         return {
-
-            "total_predictions": len(results),
-
-            "results": results
-
+            "success": True,
+            "message": "Batch toxicity prediction completed successfully.",
+            "data": {
+                "total_predictions": len(results),
+                "results": results
+            }
         }
 
     except Exception as e:
 
         raise HTTPException(
-
             status_code=500,
-
             detail=str(e)
-
         )

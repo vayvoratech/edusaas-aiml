@@ -1,5 +1,4 @@
-from typing import List
-import os
+from uuid import UUID
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
@@ -15,24 +14,16 @@ router = APIRouter(
 
 
 # ---------------------------------------
-# Request Schemas
+# Request Schema
 # ---------------------------------------
 
 class SentimentRequest(BaseModel):
 
-    student_id: int = Field(
+    post_id: UUID = Field(
         ...,
-        json_schema_extra={"example": 101}
-    )
-
-    course_id: int = Field(
-        ...,
-        json_schema_extra={"example": 15}
-    )
-
-    discussion_id: int = Field(
-        ...,
-        json_schema_extra={"example": 5001}
+        json_schema_extra={
+            "example": "21de70eb-efcd-47d0-99e3-72928628d228"
+        }
     )
 
     post_text: str = Field(
@@ -43,11 +34,6 @@ class SentimentRequest(BaseModel):
             "example": "This course is amazing."
         }
     )
-
-
-class BatchSentimentRequest(BaseModel):
-
-    requests: List[SentimentRequest]
 
 
 # ---------------------------------------
@@ -72,103 +58,39 @@ def home():
 def health():
 
     return {
-
         "success": True,
-
         "message": "Sentiment Analysis Service Healthy",
-
         "data": {
-
             "status": "healthy",
-
-            "model": "DistilBERT",
-
-            "version": os.getenv("MODEL_VERSION")
-
+            "model": "DistilBERT"
         }
-
     }
 
 
 # ---------------------------------------
-# Predict Sentiment
+# Prediction
 # ---------------------------------------
 
 @router.post("/predict-sentiment")
-def predict_sentiment(request: SentimentRequest):
+def predict_sentiment(
+    request: SentimentRequest
+):
 
     try:
 
         result = sentiment_service.predict(
-
-            student_id=request.student_id,
-
-            course_id=request.course_id,
-
-            discussion_id=request.discussion_id,
-
+            post_id=request.post_id,
             post_text=request.post_text
-
         )
 
         return {
-
             "success": True,
-
             "message": "Sentiment prediction completed successfully.",
-
             "data": result
-
         }
 
     except Exception as e:
 
-        raise EduAIException(str(e))
-
-
-# ---------------------------------------
-# Batch Prediction
-# ---------------------------------------
-
-@router.post("/batch-predict")
-def batch_predict(request: BatchSentimentRequest):
-
-    try:
-
-        results = []
-
-        for item in request.requests:
-
-            prediction = sentiment_service.predict(
-
-                student_id=item.student_id,
-
-                course_id=item.course_id,
-
-                discussion_id=item.discussion_id,
-
-                post_text=item.post_text
-
-            )
-
-            results.append(prediction)
-
-        return {
-
-            "success": True,
-
-            "message": "Batch prediction completed successfully.",
-
-            "data": {
-
-                "total_predictions": len(results),
-
-                "results": results
-
-            }
-
-        }
-
-    except Exception as e:
-
-        raise EduAIException(str(e))
+        raise EduAIException(
+            str(e)
+        )

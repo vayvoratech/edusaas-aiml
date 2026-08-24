@@ -1,620 +1,746 @@
-# EduAI Recommendation System - Project Documentation
 
-## Project
-AI-Based Education Recommendation System
+# EduSaaS — Recommendation Engine
 
----
+## Production-Level Technical Documentation
 
-# Day 1 - Project Setup
+### 1. Module Overview
 
-## Tasks Completed
-- Created project structure
-- Created GitHub repository
-- Configured Git
-- Created virtual environment
-- Installed required Python libraries
+**Module:** Course Recommendation Engine
+**Purpose:** Generate personalized course recommendations for a learner based on:
 
-## Status
-Completed
+* Existing course catalog
+* Learner-course ratings
+* Learner domain/role
+* Course content
+* Course difficulty/category
+* Course prerequisites
+* Previously completed courses
 
----
+The implementation is a **hybrid recommendation system** combining:
 
-# Day 2 - PostgreSQL Database Setup & Synthetic Data
+1. **Content-Based Filtering**
+2. **Collaborative Filtering using SVD**
+3. **Learner Profile Matching**
+4. **Prerequisite Validation**
+5. **Confidence-based ranking**
+6. **Recommendation explanation**
 
-## Tasks Completed
-
-### Database
-- Installed PostgreSQL
-- Created database: eduai_db
-- Created tables:
-  - students
-  - courses
-  - enrollments
-
-### Database Connection
-- Connected Python application to PostgreSQL using SQLAlchemy
-- Verified successful connection
-
-### Synthetic Data Generation
-- Generated 1000 student records
-- Generated 50 course records
-- Generated 5000 enrollment records
-
-### Technologies Used
-- Python
-- PostgreSQL
-- SQLAlchemy
-- Pandas
-- Faker
-
-### Database Status
-
-| Table | Records |
-|--------|---------|
-| students | 1000 |
-| courses | 50 |
-| enrollments | 5000 |
-
-## Outcome
-Database setup is complete, and synthetic data has been populated successfully.
+The finalized backend schema extends the existing `education.recommendations` table rather than creating a duplicate recommendation table. 
 
 ---
 
-# Day 3 (Planned)
+# 2. Production Architecture
 
-## Tasks
-- Exploratory Data Analysis (EDA)
-- Data preprocessing
-- Feature engineering
-- Recommendation model developmentm.
-
-# Day 3 - Data Cleaning & Feature Engineering
-
-## Objective
-Prepare the recommendation system dataset for machine learning by cleaning the data and engineering relevant features.
-
----
-
-## Data Cleaning
-
-### Tasks Performed
-
-- Loaded data from PostgreSQL database.
-- Removed duplicate records from:
-  - students
-  - courses
-  - enrollments
-- Removed rows containing missing values.
-- Standardized text columns by removing extra spaces and formatting values consistently.
-- Validated student age and retained records within the valid age range.
-- Verified dataset integrity after cleaning.
-
-### Output
-
-Clean datasets ready for feature engineering and model training.
-
----
-
-## Feature Engineering
-
-### Tasks Performed
-
-- Loaded cleaned data from PostgreSQL.
-- Merged the following tables:
-  - students
-  - enrollments
-  - courses
-- Created a unified dataset for recommendation model training.
-- Encoded categorical features using Label Encoding:
-  - gender
-  - skill_level
-  - interest_area
-  - category
-  - difficulty_level
-- Prepared numerical features for machine learning.
-- Saved the processed dataset for model development.
-
-### Features Used
-
-#### Student Features
-- student_id
-- age
-- gender
-- skill_level
-- interest_area
-
-#### Course Features
-- course_id
-- category
-- difficulty_level
-- duration_hours
-
-#### Enrollment Features
-- completion_percentage
-- watch_time_minutes
-- quiz_score
-- rating
-
----
-
-## Output Dataset
-
-Processed dataset created for recommendation model training.
-
-Location:
-
-data/processed_recommendation_data.csv
-
----
-
-## Technologies Used
-
-- Python
-- Pandas
-- SQLAlchemy
-- Scikit-learn
-- PostgreSQL
-
----
-
-## Outcome
-
-Successfully prepared a machine learning-ready dataset by cleaning, merging, and transforming data from multiple PostgreSQL tables. The processed dataset is ready for recommendation model implementation.
-
----
-
-## Next Task
-
-- Implement Content-Based Recommendation
-- Implement Collaborative Filtering
-- Develop Hybrid Recommendation 
-
-
-## 📌 Content-Based Recommendation Model
-
-### Objective
-
-Develop a recommendation system that suggests similar courses based on course attributes rather than user behavior.
-
----
-
-## Approach
-
-A Content-Based Recommendation System recommends courses by comparing the characteristics of each course. Instead of using other students' preferences, it analyzes the content (features) of the courses.
-
-For this implementation, the following course attributes were used:
-
-- Course Category
-- Difficulty Level
-
-These features were combined into a single text feature and converted into numerical vectors for similarity computation.
-
----
-
-## Workflow
-
-```
-Load Courses from PostgreSQL
-            │
-            ▼
-Combine Category + Difficulty
-            │
-            ▼
-Convert Text to Numerical Vectors
-(CountVectorizer)
-            │
-            ▼
-Calculate Course Similarity
-(Cosine Similarity)
-            │
-            ▼
-Recommend Top Similar Courses
+```text
+                    Client / Frontend
+                           │
+                           ▼
+                    Node.js Backend
+                         :3000
+                           │
+                           │ Fetch learner + course data
+                           ▼
+                    PostgreSQL
+                   education schema
+                           │
+                           │
+                           ▼
+              Node Recommendation Service
+                           │
+                           │ HTTP JSON
+                           ▼
+                  Python FastAPI
+                     :8000
+                           │
+                           ▼
+              Recommendation Engine
+                           │
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+    Content-Based      SVD Model      Profile Matching
+          │                │                │
+          └────────────────┼────────────────┘
+                           ▼
+                 Confidence Calculation
+                           │
+                           ▼
+              Prerequisite Validation
+                           │
+                           ▼
+                  Final Ranking
+                           │
+                           ▼
+                  Top 5 Courses
+                           │
+                           ▼
+                     Node.js
+                           │
+                           ▼
+               education.recommendations
 ```
 
----
-
-## Technologies Used
-
-- Python
-- Pandas
-- PostgreSQL
-- SQLAlchemy
-- Scikit-learn
+**Critical architectural rule:** Python does not directly connect to PostgreSQL at runtime. The recommendation implementation explicitly expects the Node.js backend to supply the data. 
 
 ---
 
-## Machine Learning Techniques
+# 3. Input Data
 
-### CountVectorizer
+Node provides the recommendation engine with the following datasets.
 
-Converts textual course information into numerical feature vectors.
+### Courses
+
+```text
+id
+title
+description
+provider
+category
+difficulty
+status
+educator_id
+```
+
+These are the required course fields consumed by the recommendation engine. 
+
+### Ratings
+
+```text
+user_id
+course_id
+rating
+```
+
+Ratings form the user-item interaction matrix used by the SVD collaborative filtering component. 
+
+### User
+
+The engine consumes learner profile information including:
+
+```text
+user_id
+domain_name
+domain_category
+```
+
+The finalized backend identifies `education.users` as the canonical learner identity. 
+
+### Prerequisites
+
+```text
+course_id
+prerequisite_course_id
+```
+
+### Completed Courses
+
+```text
+id
+title
+```
+
+The engine uses these to construct the learner's learning pathway and validate prerequisites.
+
+---
+
+# 4. Content-Based Recommendation
+
+Course information is converted into a textual feature representation:
+
+```text
+title
++
+description
++
+category
++
+difficulty
+```
+
+The implementation creates:
+
+```python
+CountVectorizer(
+    stop_words="english"
+)
+```
+
+and transforms the course features into a vector space. 
+
+### Similarity
+
+Cosine similarity is calculated between course vectors:
+
+```text
+Course A ─────┐
+              │
+              ├── Cosine Similarity
+              │
+Course B ─────┘
+```
+
+The similarity score represents how closely related two courses are based on their textual metadata.
+
+
+
+---
+
+# 5. Collaborative Filtering
+
+The system uses:
+
+**Algorithm:** SVD
+**Library:** Surprise
+
+The rating range is:
+
+```text
+1 – 5
+```
+
+The training data consists of:
+
+```text
+user_id
+course_id
+rating
+```
+
+The SVD model learns latent user/course preference patterns. 
+
+For each candidate course:
+
+```python
+svd_model.predict(
+    str(user_id),
+    str(course["id"])
+).est
+```
+
+produces the predicted learner rating. 
+
+---
+
+# 6. Profile Matching
+
+The system also considers the learner's:
+
+```text
+domain_name
+domain_category
+```
+
+against course metadata.
+
+For example:
+
+```text
+Learner domain:
+Data Science
+
+Course category:
+Data Science
+```
+
+produces a positive profile match.
+
+This allows the system to incorporate learner career/domain context instead of relying exclusively on historical ratings. 
+
+---
+
+# 7. Hybrid Recommendation
+
+The recommendation engine combines multiple signals:
+
+```text
+                    Candidate Course
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+ Content Similarity   SVD Rating       Profile Match
+        │                  │                  │
+        └──────────────────┼──────────────────┘
+                           ▼
+                  Confidence Calculator
+                           │
+                           ▼
+                    Recommendation
+```
+
+The implementation also uses:
+
+```text
+ConfidenceCalculator
+ExplanationEngine
+```
+
+to generate the recommendation confidence and human-readable recommendation reason. 
+
+---
+
+# 8. Candidate Generation
+
+The system first calculates similarity against the input course.
+
+It then selects candidate courses from the most similar courses rather than evaluating the entire catalog indiscriminately. The implementation considers the next candidate courses after the input course in similarity order. 
+
+For each candidate it calculates:
+
+```text
+similarity_score
+predicted_rating
+profile_score
+confidence_score
+```
+
+---
+
+# 9. Prerequisite Validation
+
+Prerequisites are checked before the recommendation is finalized.
 
 Example:
 
-Before:
+```text
+Recommended:
+Advanced Python
 
-```
-Python Beginner
-```
+Prerequisite:
+Python Fundamentals
 
-After:
-
-```
-[1,1,0,0]
-```
-
-This allows machine learning algorithms to compare courses mathematically.
-
----
-
-### Cosine Similarity
-
-Calculates the similarity between every pair of courses.
-
-Similarity Score Range:
-
-- 1.0 → Exactly Similar
-- 0.0 → Completely Different
-
-The model recommends courses with the highest similarity scores.
-
----
-
-## Features Used
-
-### Course Features
-
-- course_name
-- category
-- difficulty_level
-
----
-
-## Output
-
-Input:
-
-```
-Python Course 1
+Learner completed:
+Python Fundamentals
 ```
 
-Example Output:
+Result:
 
-```
-Python Course 8
-Machine Learning Course 15
-SQL Course 22
-Data Science Course 30
-Deep Learning Course 41
+```text
+prerequisite_completed = true
 ```
 
-The system returns the Top 5 most similar courses.
+If the prerequisite course is not present in the learner's completed-course set:
 
----
-
-## Advantages
-
-- Simple and fast recommendation system.
-- Does not require user ratings.
-- Easy to scale for new courses.
-- Useful for cold-start courses where no enrollment history exists.
-
----
-
-## Current Limitations
-
-This implementation only considers:
-
-- Course Category
-- Difficulty Level
-
-It does not yet use learner-specific information such as:
-
-- Student Interests
-- Skill Level
-- Course Ratings
-- Completion Percentage
-- Quiz Scores
-- Watch Time
-
----
-
-## Future Improvements
-
-The recommendation engine will be enhanced into a Hybrid Recommendation System by integrating:
-
-- Collaborative Filtering
-- Student Learning History
-- Course Ratings
-- Watch Time
-- Quiz Performance
-- Skill Gap Analysis
-
-This will generate personalized recommendations based on both course similarity and learner behavior.
-
----
-
-## Status
-
-✅ Content-Based Recommendation Model Implemented
-
-Next Module:
-
-➡️ Collaborative Filtering Recommendation
-
-
-## Collaborative Filtering Recommendation
-
-### Objective
-
-Recommend courses based on learner behavior and historical ratings.
-
----
-
-### Algorithm
-
-Singular Value Decomposition (SVD)
-
----
-
-### Dataset
-
-The model was trained using:
-
-- student_id
-- course_id
-- rating
-
----
-
-### Workflow
-
-PostgreSQL
-↓
-
-Load Enrollment Data
-↓
-
-Train-Test Split
-
-↓
-
-SVD Model Training
-
-↓
-
-Predict Ratings
-
-↓
-
-Evaluate using RMSE
-
----
-
-### Evaluation Metric
-
-Root Mean Squared Error (RMSE)
-
-Obtained RMSE:
-
-1.4513
-
----
-
-### Technologies Used
-
-- Python
-- Pandas
-- PostgreSQL
-- SQLAlchemy
-- Scikit-Surprise
-
----
-
-### Output
-
-The model predicts the rating a student is likely to give a course.
-
-These predicted ratings are used to recommend courses the learner has not yet taken.
-
----
-
-### Status
-
-✅ Implemented Successfully
-
-
-## Hybrid Recommendation System
-
-### Objective
-
-Develop a Hybrid Recommendation System by combining Content-Based Recommendation and Collaborative Filtering to provide personalized course recommendations.
-
----
-
-## Overview
-
-The Hybrid Recommendation System combines:
-
-- **Content-Based Filtering** – Recommends courses based on course attributes such as category and difficulty level.
-- **Collaborative Filtering** – Recommends courses based on learner ratings and behavior.
-
-This approach improves recommendation quality by considering both course similarity and student preferences.
-
----
-
-## Workflow
-
+```text
+prerequisite_completed = false
 ```
-                 PostgreSQL
-                      │
-        ┌─────────────┴─────────────┐
-        │                           │
-        ▼                           ▼
-   Courses Table             Enrollments Table
-        │                           │
-        ▼                           ▼
-Content-Based Model       Collaborative Filtering
-        │                           │
-        └─────────────┬─────────────┘
-                      │
-                      ▼
-          Hybrid Recommendation Engine
-                      │
-                      ▼
-          Top Recommended Courses
+
+The implementation performs this validation using:
+
+```text
+course_prerequisites
++
+completed_courses
+```
+
+before generating the final recommendation object. 
+
+---
+
+# 10. Recommendation Explanation
+
+Each recommendation receives a generated explanation using:
+
+```text
+ExplanationEngine
+```
+
+The explanation is based on:
+
+```text
+course name
+predicted rating
+confidence score
+prerequisite status
+```
+
+
+
+Example response conceptually:
+
+```json
+{
+  "course_name": "Advanced Python",
+  "predicted_rating": 4.62,
+  "similarity_score": 0.81,
+  "confidence_score": 0.87,
+  "recommendation_reason": "...",
+  "prerequisite_completed": true
+}
 ```
 
 ---
 
-## Technologies Used
+# 11. Final Ranking
 
-- Python
-- PostgreSQL
-- Pandas
-- SQLAlchemy
-- Scikit-learn
-- Scikit-Surprise
+Recommendations are sorted using:
 
----
+1. `confidence_score`
+2. `predicted_rating`
+3. `similarity_score`
 
-## Data Used
+in descending order.
 
-### Courses Table
+Only the **top 5 recommendations** are returned. 
 
-- course_id
-- course_name
-- category
-- difficulty_level
+Conceptually:
 
-### Enrollments Table
-
-- student_id
-- course_id
-- rating
-
----
-
-## Implementation Steps
-
-### Step 1
-
-Load course and enrollment data from PostgreSQL.
-
-### Step 2
-
-Generate course similarity using:
-
-- CountVectorizer
-- Cosine Similarity
-
-### Step 3
-
-Train the Collaborative Filtering model using the SVD algorithm.
-
-### Step 4
-
-Retrieve similar courses using the Content-Based model.
-
-### Step 5
-
-Predict each student's expected rating for those courses using Collaborative Filtering.
-
-### Step 6
-
-Rank the recommendations based on predicted ratings.
-
----
-
-## Model Components
-
-### Content-Based Filtering
-
-Uses:
-
-- Course Category
-- Difficulty Level
-
-Purpose:
-
-Find courses similar to the selected course.
-
----
-
-### Collaborative Filtering
-
-Uses:
-
-- Student ID
-- Course ID
-- Rating
-
-Purpose:
-
-Predict how much a student is likely to prefer each course.
-
----
-
-## Recommendation Strategy
-
-The system first identifies courses similar to the selected course and then predicts how much the target student will like each of those courses.
-
-The recommendations are sorted according to the predicted rating and the highest-ranked courses are returned.
-
----
-
-## Output
-
-Input
-
-```
-Student ID : 1
-
-Selected Course :
-Python Course 1
-```
-
-Example Output
-
-```
-Machine Learning Course 12
-
-Predicted Rating : 4.82
-
-------------------------
-
-SQL Course 8
-
-Predicted Rating : 4.71
-
-------------------------
-
-Deep Learning Course 16
-
-Predicted Rating : 4.65
+```text
+Confidence
+    ↓
+Predicted Rating
+    ↓
+Similarity
+    ↓
+Final Rank
 ```
 
 ---
 
-## Advantages
+# 12. Learning Pathway
 
-- Produces more personalized recommendations.
-- Combines learner preferences with course similarity.
-- Reduces limitations of using only one recommendation approach.
-- Easily scalable for large educational datasets.
+The system also produces a learning pathway.
+
+It combines:
+
+```text
+Completed Courses
+        +
+Recommended Courses
+```
+
+Completed courses are marked:
+
+```text
+COMPLETED
+```
+
+Recommended courses are marked:
+
+```text
+RECOMMENDED
+```
+
+
+
+Final response structure:
+
+```json
+{
+  "user_id": "...",
+  "course_name": "...",
+  "recommendations": [],
+  "learning_pathway": []
+}
+```
+
+
 
 ---
 
-## Current Status
+# 13. Database Integration
 
-- ✅ Content-Based Recommendation Completed
-- ✅ Collaborative Filtering Completed
-- ✅ Hybrid Recommendation System Completed
+The production database uses:
+
+```text
+education.recommendations
+```
+
+The table already exists in the backend schema.
+
+AI-specific fields are:
+
+```text
+predicted_rating
+similarity_score
+confidence_score
+prerequisite_completed
+rank
+```
+
+The backend specification explicitly says to **extend the existing table rather than create a duplicate recommendation table**. 
+
+The corresponding AI fields are defined as:
+
+| Column                 | Type             | Purpose                          |
+| ---------------------- | ---------------- | -------------------------------- |
+| predicted_rating       | DOUBLE PRECISION | SVD predicted learner preference |
+| similarity_score       | DOUBLE PRECISION | Content similarity               |
+| confidence_score       | DOUBLE PRECISION | Recommendation confidence        |
+| prerequisite_completed | BOOLEAN          | Prerequisite validation          |
+| rank                   | INTEGER          | Final recommendation order       |
+
+
 
 ---
 
-## Next Phase
+# 14. Runtime Data Flow
 
-FastAPI Integration
+The production flow is:
 
-The hybrid recommendation model will be deployed as a REST API to serve recommendations to the EduAI SaaS platform.
+```text
+1. Frontend requests recommendations
+              ↓
+2. Node receives user_id + course_name
+              ↓
+3. Node queries PostgreSQL
+              ↓
+4. Node collects:
+      • courses
+      • ratings
+      • user profile
+      • prerequisites
+      • completed courses
+              ↓
+5. Node sends JSON to Python
+              ↓
+6. Python creates DataFrames
+              ↓
+7. Content similarity calculated
+              ↓
+8. SVD prediction calculated
+              ↓
+9. Profile matching calculated
+              ↓
+10. Prerequisites validated
+              ↓
+11. Confidence calculated
+              ↓
+12. Recommendations ranked
+              ↓
+13. Top 5 returned
+              ↓
+14. Node receives result
+              ↓
+15. Node persists recommendation data
+              ↓
+16. API response returned
+```
+
+This separation keeps **database ownership in Node** and **ML computation in Python**.
+
+---
+
+# 15. API Contract
+
+### Request
+
+Conceptually:
+
+```http
+POST /api/recommendation/recommend
+Content-Type: application/json
+```
+
+with:
+
+```json
+{
+  "user_id": "USER_UUID",
+  "course_name": "Python for Beginners"
+}
+```
+
+Node enriches this request with the database data required by Python.
+
+### Python service payload
+
+The Python recommendation engine expects:
+
+```text
+user_id
+course_name
+courses
+ratings
+user
+prerequisites
+completed_courses
+```
+
+This is explicitly represented in the Node-provided request implementation. 
+
+---
+
+# 16. Error Handling
+
+The recommendation service validates important runtime conditions.
+
+### No courses
+
+```text
+No active courses were provided by Node.js.
+```
+
+### Course not found
+
+```text
+Course '<course_name>' not found.
+```
+
+### User not found
+
+```text
+User '<user_id>' not found.
+```
+
+These validations prevent the model from producing recommendations from incomplete inputs. 
+
+---
+
+# 17. Production Security
+
+### Python
+
+Python should **not** contain:
+
+```text
+PostgreSQL credentials
+DATABASE_URL
+DB password
+SQL queries
+```
+
+for runtime recommendation inference.
+
+### Node
+
+Node owns:
+
+```text
+PostgreSQL connection
+DB credentials
+data retrieval
+prediction persistence
+API authentication/authorization
+```
+
+### Environment variables
+
+Sensitive configuration should remain in:
+
+```text
+.env
+```
+
+and `.env` must **not be committed to Git**.
+
+---
+
+# 18. Model/Data Considerations
+
+The current implementation has an important characteristic:
+
+> The current recommendation implementation retrains the SVD/vectorizer from the Node-provided data at runtime rather than depending on persisted model artifacts. 
+
+Therefore the current architecture is:
+
+```text
+Node data
+   ↓
+Python
+   ↓
+Fit SVD + Vectorizer
+   ↓
+Generate recommendations
+```
+
+rather than:
+
+```text
+Pre-trained artifacts
+       ↓
+Load model
+       ↓
+Inference
+```
+
+This is important to document accurately for your manager.
+
+---
+
+# 19. Production Deployment
+
+Recommended deployment structure:
+
+```text
+                    Load Balancer / API Gateway
+                              │
+                              ▼
+                         Node.js API
+                            :3000
+                              │
+                 ┌────────────┴────────────┐
+                 ▼                         ▼
+           PostgreSQL                Python ML Service
+                                      :8000
+                                           │
+                                           ▼
+                                  Recommendation Engine
+```
+
+Python should be independently deployable as an ML microservice.
+
+Node remains the application/backend layer.
+
+---
+
+# 20. Testing Checklist
+
+### Python
+
+```text
+☐ Python service starts
+☐ Health endpoint works
+☐ Valid recommendation request works
+☐ Invalid user handled
+☐ Invalid course handled
+☐ Empty course dataset handled
+☐ Recommendation ranking works
+☐ Prerequisite validation works
+```
+
+### Node
+
+```text
+☐ Node service starts
+☐ PostgreSQL connection works
+☐ Node → Python works
+☐ Python response received
+☐ Recommendation persistence works
+☐ API response returned correctly
+```
+
+### Database
+
+```text
+☐ education.courses
+☐ education.course_ratings
+☐ education.users
+☐ education.domain_roles
+☐ education.course_prerequisites
+☐ education.enrollments
+☐ education.recommendations
+```
+
+---
+
+# 21. Production Acceptance Criteria
+
+The Recommendation module is considered production-ready when:
+
+```text
+✅ Python has no runtime DB connection
+✅ Node owns PostgreSQL access
+✅ Node → Python communication works
+✅ SVD prediction works
+✅ Content similarity works
+✅ Profile matching works
+✅ Prerequisite validation works
+✅ Confidence calculation works
+✅ Top 5 ranking works
+✅ Learning pathway generated
+✅ Recommendation data persisted
+✅ UUID-based backend schema supported
+✅ API errors handled
+✅ Secrets excluded from Git
+```
+
+

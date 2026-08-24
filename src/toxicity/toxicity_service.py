@@ -1,8 +1,6 @@
 import torch
 
-from src.logs.logger import logger
 from src.toxicity.model_loader import model_loader
-from src.toxicity.toxicity_repository import toxicity_repository
 
 
 LABELS = [
@@ -17,46 +15,39 @@ LABELS = [
 
 class ToxicityService:
     """
-    Business logic for Toxicity Detection.
+    Toxicity Detection Inference Service.
+
+    Uses the pre-trained DistilBERT model.
+    Database persistence is handled by Node.
     """
 
     def __init__(self):
 
         self.model = model_loader.model
-
         self.tokenizer = model_loader.tokenizer
-
 
     def predict(
         self,
-        student_id: int,
-        discussion_id: int,
+        student_id: str,
+        discussion_id: str,
         post_text: str
     ):
 
         try:
 
-            logger.info(
-                f"Predicting toxicity for Student ID: {student_id}"
-            )
-
             encoding = self.tokenizer(
-
                 post_text,
-
                 return_tensors="pt",
-
                 truncation=True,
-
                 padding=True,
-
                 max_length=256
-
             )
 
             with torch.no_grad():
 
-                outputs = self.model(**encoding)
+                outputs = self.model(
+                    **encoding
+                )
 
             probabilities = torch.sigmoid(
                 outputs.logits
@@ -70,73 +61,35 @@ class ToxicityService:
 
                 if score >= 0.50:
 
-                    predictions.append(
-
-                        {
-
-                            "label": LABELS[index],
-
-                            "confidence": round(
-                                score * 100,
-                                2
-                            )
-
-                        }
-
-                    )
+                    predictions.append({
+                        "label": LABELS[index],
+                        "confidence": round(
+                            score * 100,
+                            2
+                        )
+                    })
 
             if not predictions:
 
-                predictions.append(
-
-                    {
-
-                        "label": "NON_TOXIC",
-
-                        "confidence": round(
-
-                            (1 - max(scores)) * 100,
-
-                            2
-
-                        )
-
-                    }
-
-                )
-
-            toxicity_repository.save_prediction(
-
-                student_id=student_id,
-
-                discussion_id=discussion_id,
-
-                post_text=post_text,
-
-                predictions=predictions
-
-            )
-
-            logger.info(
-                "Toxicity prediction completed successfully."
-            )
+                predictions.append({
+                    "label": "NON_TOXIC",
+                    "confidence": round(
+                        (1 - max(scores)) * 100,
+                        2
+                    )
+                })
 
             return {
-
                 "student_id": student_id,
-
                 "discussion_id": discussion_id,
-
                 "post_text": post_text,
-
                 "predictions": predictions
-
             }
 
-        except Exception:
+        except Exception as e:
 
-            logger.exception(
-                "Toxicity prediction failed."
+            print(
+                f"Toxicity Prediction Failed: {e}"
             )
 
             raise

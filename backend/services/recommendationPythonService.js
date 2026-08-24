@@ -4,21 +4,21 @@ require("dotenv").config();
 const RECOMMENDATION_SERVICE =
     process.env.RECOMMENDATION_SERVICE;
 
-
 class RecommendationPythonService {
 
     async getRecommendations(payload) {
 
         try {
 
-            const response = await axios.post(
+            const response = await axios.get(
                 `${RECOMMENDATION_SERVICE}/recommendation/recommend`,
-                payload,
                 {
-                    timeout: 10000,
-                    headers: {
-                        "Content-Type": "application/json"
-                    }
+                    params: {
+                        user_id: payload.user_id,
+                        course_name: payload.course_name
+                    },
+
+                    timeout: 10000
                 }
             );
 
@@ -43,7 +43,6 @@ class RecommendationPythonService {
                 throw serviceError;
             }
 
-
             // Python service timeout
             if (error.code === "ECONNABORTED") {
 
@@ -56,7 +55,6 @@ class RecommendationPythonService {
 
                 throw serviceError;
             }
-
 
             // Python service unavailable
             if (error.code === "ECONNREFUSED") {
@@ -71,12 +69,10 @@ class RecommendationPythonService {
                 throw serviceError;
             }
 
-
             throw error;
         }
     }
 }
-
 
 module.exports =
     new RecommendationPythonService();

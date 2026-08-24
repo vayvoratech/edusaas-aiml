@@ -4,45 +4,56 @@ import pandas as pd
 class FraudDataset:
     """
     Prepare dataset for Fraud Detection models.
+    Uses the finalized education schema feature names.
     """
 
-    def __init__(
-        self,
-        dataframe: pd.DataFrame
-    ):
+    FEATURE_COLUMNS = [
+        # Learning Features
+        "completion_percentage",
+        "watch_time_minutes",
+        "quiz_score",
+        "rating",
 
+        # Activity Features
+        "sessions_last_30_days",
+        "avg_session_minutes",
+        "videos_watched",
+        "assignments_attempted",
+        "discussion_interactions",
+
+        # Security Features
+        "login_count",
+        "device_count",
+        "ip_changes",
+
+        # Engineered Feature
+        "suspicious_activity_score"
+    ]
+
+    def __init__(self, dataframe: pd.DataFrame):
         self.dataframe = dataframe.copy()
 
     def prepare(self):
 
-        feature_columns = [
-
-            # Learning Features
-            "completion_percentage",
-            "watch_time_minutes",
-            "quiz_score",
-            "rating",
-
-            # Activity Features
-            "sessions_last_30_days",
-            "avg_session_minutes",
-            "videos_watched",
-            "assignments_attempted",
-            "discussion_interactions",
-
-            # Security Features
-            "login_count",
-            "device_count",
-            "ip_changes",
-
-            # Engineered Feature
-            "suspicious_activity_score"
-
+        missing_columns = [
+            column
+            for column in self.FEATURE_COLUMNS
+            if column not in self.dataframe.columns
         ]
 
-        X = self.dataframe[feature_columns]
+        if missing_columns:
+            raise ValueError(
+                f"Missing Fraud features: {missing_columns}"
+            )
 
-        y = self.dataframe["is_fraud"]
+        X = self.dataframe[self.FEATURE_COLUMNS].copy()
+
+        if "is_fraud" not in self.dataframe.columns:
+            raise ValueError(
+                "Training dataset must contain 'is_fraud'."
+            )
+
+        y = self.dataframe["is_fraud"].astype(int)
 
         return X, y
 
@@ -60,14 +71,10 @@ if __name__ == "__main__":
 
     dataframe = engineer.create_features()
 
-    X, y = FraudDataset(
-        dataframe
-    ).prepare()
+    X, y = FraudDataset(dataframe).prepare()
 
-    print("\nFeatures Shape :", X.shape)
+    print("\nFeatures Shape:", X.shape)
+    print("Labels Shape:", y.shape)
 
-    print("Labels Shape :", y.shape)
-
-    print("\nFeature Columns\n")
-
+    print("\nFeature Columns:")
     print(X.columns.tolist())
