@@ -1,75 +1,47 @@
-import os
-
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-
-
-# ============================================================
-# DATABASE CONFIGURATION
-# ============================================================
-
-load_dotenv()
-
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-
-DB_NAME = "eduai_db"
-SCHEMA = "education"
-
-DATABASE_URL = (
-    f"postgresql+psycopg2://"
-    f"{DB_USER}:{DB_PASSWORD}"
-    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
-
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True
-)
-
-
 # ============================================================
 # PREREQUISITE VALIDATOR
 # ============================================================
 
+
 class PrerequisiteValidator:
+    """
+    Validates course prerequisites without directly
+    connecting to PostgreSQL.
+
+    Database data must be supplied by the calling
+    service/API.
+    """
 
     @staticmethod
     def has_completed_prerequisite(
-        user_id,
-        prerequisite_course_id
+        prerequisite_course_id,
+        completed_courses
     ) -> bool:
         """
-        Check whether a user has completed the
-        prerequisite course with at least 80%
-        completion.
+        Check whether a prerequisite course has been
+        completed by the user.
+
+        completed_courses should contain course IDs
+        that the user has completed with the required
+        completion threshold.
         """
 
         # No prerequisite required
         if prerequisite_course_id is None:
             return True
 
-        with engine.begin() as connection:
+        if completed_courses is None:
+            return False
 
-            result = connection.execute(
-                text(
-                    f"""
-                    SELECT COUNT(*)
-                    FROM {SCHEMA}.enrollments
-                    WHERE user_id = :user_id
-                      AND course_id = :course_id
-                      AND completion_percentage >= 80
-                    """
-                ),
-                {
-                    "user_id": user_id,
-                    "course_id": prerequisite_course_id
-                }
-            ).scalar()
+        completed_courses = {
+            str(course_id)
+            for course_id in completed_courses
+        }
 
-        return result > 0
+        return (
+            str(prerequisite_course_id)
+            in completed_courses
+        )
 
 
     # ========================================================
@@ -78,49 +50,89 @@ class PrerequisiteValidator:
 
     @staticmethod
     def validate(
-        user_id,
-        course_id
+        course_id,
+        prerequisites,
+        completed_courses
     ) -> bool:
         """
         Validate whether all prerequisites for a course
         have been completed by the user.
+
+        Parameters
+        ----------
+        course_id:
+            Course being recommended.
+
+        prerequisites:
+            Mapping or list containing prerequisite
+            course relationships.
+
+        completed_courses:
+            Course IDs completed by the user.
         """
 
-        with engine.begin() as connection:
-
-            prerequisites = connection.execute(
-                text(
-                    f"""
-                    SELECT
-                        prerequisite_course_id
-                    FROM {SCHEMA}.course_prerequisites
-                    WHERE course_id = :course_id
-                    """
-                ),
-                {
-                    "course_id": course_id
-                }
-            ).fetchall()
-
-
-        # No prerequisites
         if not prerequisites:
             return True
 
+        # ----------------------------------------------------
+        # Support list of prerequisite records
+        # ----------------------------------------------------
 
-        # Check every prerequisite
+        prerequisite_ids = []
+
         for prerequisite in prerequisites:
+
+            if isinstance(
+                prerequisite,
+                dict
+            ):
+
+                current_course_id = (
+                    prerequisite.get(
+                        "course_id"
+                    )
+                )
+
+                if (
+                    current_course_id is not None
+                    and str(current_course_id)
+                    != str(course_id)
+                ):
+                    continue
+
+                prerequisite_id = (
+                    prerequisite.get(
+                        "prerequisite_course_id"
+                    )
+                )
+
+            else:
+
+                prerequisite_id = prerequisite
+
+            if prerequisite_id is not None:
+
+                prerequisite_ids.append(
+                    prerequisite_id
+                )
+
+        # ----------------------------------------------------
+        # Check every prerequisite
+        # ----------------------------------------------------
+
+        for prerequisite_course_id in (
+            prerequisite_ids
+        ):
 
             completed = (
                 PrerequisiteValidator
                 .has_completed_prerequisite(
-                    user_id,
-                    prerequisite.prerequisite_course_id
+                    prerequisite_course_id,
+                    completed_courses
                 )
             )
 
             if not completed:
                 return False
-
 
         return True

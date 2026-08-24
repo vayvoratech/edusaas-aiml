@@ -4,21 +4,43 @@ require("dotenv").config();
 const RECOMMENDATION_SERVICE =
     process.env.RECOMMENDATION_SERVICE;
 
+
 class RecommendationPythonService {
 
     async getRecommendations(payload) {
 
         try {
 
-            const response = await axios.get(
+            const response = await axios.post(
                 `${RECOMMENDATION_SERVICE}/recommendation/recommend`,
                 {
-                    params: {
-                        user_id: payload.user_id,
-                        course_name: payload.course_name
-                    },
+                    user_id: payload.user_id,
 
-                    timeout: 10000
+                    course_name:
+                        payload.course_name,
+
+                    courses:
+                        payload.courses,
+
+                    ratings:
+                        payload.ratings,
+
+                    user:
+                        payload.user,
+
+                    prerequisites:
+                        payload.prerequisites,
+
+                    completed_courses:
+                        payload.completed_courses
+                },
+                {
+                    timeout: 10000,
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    }
                 }
             );
 
@@ -43,8 +65,12 @@ class RecommendationPythonService {
                 throw serviceError;
             }
 
+
             // Python service timeout
-            if (error.code === "ECONNABORTED") {
+            if (
+                error.code ===
+                "ECONNABORTED"
+            ) {
 
                 const serviceError =
                     new Error(
@@ -56,8 +82,12 @@ class RecommendationPythonService {
                 throw serviceError;
             }
 
+
             // Python service unavailable
-            if (error.code === "ECONNREFUSED") {
+            if (
+                error.code ===
+                "ECONNREFUSED"
+            ) {
 
                 const serviceError =
                     new Error(
@@ -69,10 +99,12 @@ class RecommendationPythonService {
                 throw serviceError;
             }
 
+
             throw error;
         }
     }
 }
+
 
 module.exports =
     new RecommendationPythonService();
