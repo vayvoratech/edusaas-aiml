@@ -2,8 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const recommendationRoutes = require("./routes/recommendation");
-const quizRoutes = require("./routes/quiz");
-const skillGapRoutes = require("./routes/skillGap");
+
 const dropoutRouter = require("./routes/dropout");
 const sentimentRouter = require("./routes/sentiment");
 const fraudRoutes = require("./routes/fraudRoutes");
@@ -16,8 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/recommendation", recommendationRoutes);
-app.use("/api/quiz", quizRoutes);
-app.use("/api/skill-gap", skillGapRoutes);
+
 app.use("/api/dropout", dropoutRouter);
 app.use("/api/sentiment", sentimentRouter);
 app.use("/api/fraud", fraudRoutes);
