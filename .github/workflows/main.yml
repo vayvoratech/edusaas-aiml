@@ -1,30 +1,74 @@
-name: CI Pipeline
+name: EduSaaS AIML CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      VAYVORA: ${{ secrets.VAYVORA }}
-
     steps:
-      - name: Checkout code
+
+      # Step 1: Trigger Pipeline
+      - name: Trigger Pipeline
+        run: echo "Pipeline triggered successfully"
+
+      # Step 2: Checkout Source Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Run CI checks
-        run: echo "CI pipeline is running successfully"
+      # Step 3: Dependency Installation
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-      - name: Linting
-        run: echo "Linting completed successfully"
+      - name: Dependency Installation
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Unit Tests
-        run: echo "Unit tests passed successfully"
+      # Step 4: Static Code Analysis - Pylint
+      - name: Static Code Analysis - Pylint
+        run: |
+          pip install pylint
+          pylint . --disable=C0114,C0115,C0116
 
-      - name: Build Check
-        run: echo "Build completed successfully"
+      # Step 5: Compile / Build
+      - name: Compile / Build
+        run: |
+          python -m compileall .
+
+      # Step 6: Unit Testing
+      - name: Unit Testing
+        run: |
+          pip install pytest
+          pytest
+
+      # Step 7: Security & Vulnerability Scan
+      - name: Security & Vulnerability Scan
+        run: |
+          pip install pip-audit
+          pip-audit
+
+      # Step 8: Package Artifacts
+      - name: Package Artifacts
+        run: |
+          mkdir -p dist
+          zip -r dist/edusaas-aiml-${{ github.sha }}.zip . \
+            -x ".git/*" \
+               ".github/*" \
+               "__pycache__/*" \
+               "*.pyc" \
+               "dist/*"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edusaas-aiml-package
+          path: dist/edusaas-aiml-${{ github.sha }}.zip
