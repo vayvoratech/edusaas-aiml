@@ -1,0 +1,13 @@
+# Core dependencies
+numpy
+pandas
+scikit-learn
+
+# Testing
+pytest
+
+# Code quality
+pylint
+
+# Security scanning
+pip-audit
