@@ -5,10 +5,6 @@ class EyeTracker:
 
     def __init__(self):
 
-        # ==================================================
-        # MEDIAPIPE FACE MESH LANDMARKS
-        # ==================================================
-
         # Left eye corners
         self.LEFT_EYE_OUTER = 33
         self.LEFT_EYE_INNER = 133
