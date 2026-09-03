@@ -12,44 +12,44 @@ router = APIRouter(
 
 class FraudRequest(BaseModel):
 
-    student_id: int
+    student_id: str
 
-    completion_percentage: float
+    completion_percentage: float = 0
 
-    watch_time_minutes: int
+    watch_time_minutes: float = 0
 
-    quiz_score: float
+    quiz_score: float = 0
 
-    rating: int
+    rating: float = 0
 
-    sessions_last_30_days: int
+    sessions_last_30_days: int = 0
 
-    avg_session_minutes: float
+    avg_session_minutes: float = 0
 
-    videos_watched: int
+    videos_watched: int = 0
 
-    assignments_attempted: int
+    assignments_attempted: int = 0
 
-    discussion_interactions: int
+    discussion_interactions: int = 0
 
-    login_count: int
+    login_count: int = 0
 
-    device_count: int
+    device_count: int = 0
 
-    ip_changes: int
+    ip_changes: int = 0
 
-    payment_status: str = "PAID"
-
-    enrollment_source: str = "WEB"
-
-    enrollment_status: str = "ACTIVE"
+    suspicious_activity_score: float = 0
 
 
 @router.post("/predict")
 def predict_fraud(request: FraudRequest):
 
-    return fraud_service.predict(
-
+    result = fraud_service.predict(
         request.model_dump()
-
     )
+
+    return {
+        "success": True,
+        "message": "Fraud prediction completed successfully.",
+        "data": result
+    }

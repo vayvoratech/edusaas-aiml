@@ -1,190 +1,204 @@
-import os
-
 import pandas as pd
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
+
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
 # ============================================================
-# ENVIRONMENT
+# CONTENT-BASED RECOMMENDATION
 # ============================================================
 
-load_dotenv()
+class ContentBasedRecommender:
+    """
+    Content-based course recommendation model.
 
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = "eduai_db"
+    The model does NOT connect directly to PostgreSQL.
+    Course data must be supplied by the calling service/API.
+    """
 
-DATABASE_URL = (
-    f"postgresql+psycopg2://"
-    f"{DB_USER}:{DB_PASSWORD}@"
-    f"{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+    def __init__(self, courses):
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True
-)
+        if courses is None or courses.empty:
 
+            raise ValueError(
+                "Course dataset cannot be empty."
+            )
 
-# ============================================================
-# LOAD COURSES
-# ============================================================
+        self.courses = courses.copy()
 
-QUERY = """
-SELECT
-    id,
-    title,
-    description,
-    provider,
-    category,
-    difficulty,
-    status,
-    educator_id
-FROM education.courses
-WHERE status = 'active'
-"""
+        self._prepare_data()
 
-courses = pd.read_sql(
-    QUERY,
-    engine
-)
-
-
-# ============================================================
-# VALIDATE DATA
-# ============================================================
-
-if courses.empty:
-    raise ValueError(
-        "No active courses found in education.courses"
-    )
-
-
-# ============================================================
-# PREPARE FEATURES
-# ============================================================
-
-courses["title"] = courses["title"].fillna("")
-courses["description"] = courses["description"].fillna("")
-courses["category"] = courses["category"].fillna("")
-courses["difficulty"] = courses["difficulty"].fillna("")
-
-
-courses["features"] = (
-    courses["title"] + " " +
-    courses["description"] + " " +
-    courses["category"] + " " +
-    courses["difficulty"]
-)
-
-
-# ============================================================
-# TEXT VECTORIZATION
-# ============================================================
-
-vectorizer = CountVectorizer(
-    stop_words="english"
-)
-
-feature_matrix = vectorizer.fit_transform(
-    courses["features"]
-)
-
-
-# ============================================================
-# COSINE SIMILARITY
-# ============================================================
-
-similarity = cosine_similarity(
-    feature_matrix
-)
-
-print(
-    "✅ Content-based similarity matrix "
-    "created successfully"
-)
-
-print(
-    f"Courses loaded: {len(courses)}"
-)
-
-
-# ============================================================
-# RECOMMEND COURSES
-# ============================================================
-
-def recommend(course_name, number_of_recommendations=5):
-
-    matches = courses[
-        courses["title"].str.lower()
-        == course_name.lower()
-    ]
-
-    if matches.empty:
-        raise ValueError(
-            f"Course not found: {course_name}"
+        self.vectorizer = CountVectorizer(
+            stop_words="english"
         )
 
-    idx = matches.index[0]
+        self.feature_matrix = (
+            self.vectorizer.fit_transform(
+                self.courses["features"]
+            )
+        )
 
-    distances = list(
-        enumerate(similarity[idx])
-    )
+        self.similarity_matrix = cosine_similarity(
+            self.feature_matrix
+        )
 
-    distances = sorted(
-        distances,
-        key=lambda x: x[1],
-        reverse=True
-    )
+        print(
+            "✅ Content-based similarity matrix "
+            "created successfully"
+        )
 
-    recommendations = []
+        print(
+            f"Courses loaded: {len(self.courses)}"
+        )
 
-    for index, score in distances[1:]:
-        recommendations.append(
-            {
-                "course_id": courses.iloc[index]["id"],
-                "course_name": courses.iloc[index]["title"],
+
+    # ========================================================
+    # PREPARE DATA
+    # ========================================================
+
+    def _prepare_data(self):
+
+        required_columns = [
+            "id",
+            "title",
+            "description",
+            "provider",
+            "category",
+            "difficulty",
+            "status",
+            "educator_id"
+        ]
+
+        missing_columns = [
+            column
+            for column in required_columns
+            if column not in self.courses.columns
+        ]
+
+        if missing_columns:
+
+            raise ValueError(
+                f"Missing course columns: "
+                f"{missing_columns}"
+            )
+
+        self.courses["title"] = (
+            self.courses["title"]
+            .fillna("")
+            .astype(str)
+        )
+
+        self.courses["description"] = (
+            self.courses["description"]
+            .fillna("")
+            .astype(str)
+        )
+
+        self.courses["category"] = (
+            self.courses["category"]
+            .fillna("")
+            .astype(str)
+        )
+
+        self.courses["difficulty"] = (
+            self.courses["difficulty"]
+            .fillna("")
+            .astype(str)
+        )
+
+        self.courses["features"] = (
+            self.courses["title"] + " " +
+            self.courses["description"] + " " +
+            self.courses["category"] + " " +
+            self.courses["difficulty"]
+        )
+
+
+    # ========================================================
+    # RECOMMEND COURSES
+    # ========================================================
+
+    def recommend(
+        self,
+        course_name,
+        number_of_recommendations=5
+    ):
+
+        matches = self.courses[
+            self.courses["title"].str.lower()
+            == course_name.lower()
+        ]
+
+        if matches.empty:
+
+            raise ValueError(
+                f"Course not found: {course_name}"
+            )
+
+        course_index = matches.index[0]
+
+        matrix_index = (
+            self.courses.index
+            .get_loc(course_index)
+        )
+
+        distances = list(
+            enumerate(
+                self.similarity_matrix[
+                    matrix_index
+                ]
+            )
+        )
+
+        distances = sorted(
+            distances,
+            key=lambda x: x[1],
+            reverse=True
+        )
+
+        recommendations = []
+
+        for matrix_position, score in distances:
+
+            if matrix_position == matrix_index:
+                continue
+
+            course = self.courses.iloc[
+                matrix_position
+            ]
+
+            recommendations.append({
+
+                "course_id": str(
+                    course["id"]
+                ),
+
+                "course_name": course[
+                    "title"
+                ],
+
                 "similarity_score": round(
                     float(score),
                     4
                 )
-            }
-        )
 
-        if len(recommendations) >= number_of_recommendations:
-            break
+            })
 
-    return recommendations
+            if (
+                len(recommendations)
+                >= number_of_recommendations
+            ):
+                break
+
+        return recommendations
 
 
 # ============================================================
-# TEST
+# FACTORY
 # ============================================================
 
-if __name__ == "__main__":
+def create_content_recommender(courses):
 
-    test_course = courses.iloc[0]["title"]
-
-    recommendations = recommend(
-        test_course,
-        5
+    return ContentBasedRecommender(
+        courses
     )
-
-    print()
-    print(
-        f"Recommendations for: {test_course}"
-    )
-    print("-" * 60)
-
-    for recommendation in recommendations:
-
-        print(
-            f"{recommendation['course_name']} "
-            f"(similarity: "
-            f"{recommendation['similarity_score']})"
-        )

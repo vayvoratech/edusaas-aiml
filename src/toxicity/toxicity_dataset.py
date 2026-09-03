@@ -4,8 +4,10 @@ from torch.utils.data import Dataset
 
 class ToxicityDataset(Dataset):
     """
-    PyTorch Dataset for Toxicity Detection.
-    Converts comments into BERT-compatible tensors.
+    PyTorch Dataset for multi-label toxicity classification.
+
+    Converts cleaned comments into Transformer-compatible tensors
+    and returns six toxicity labels.
     """
 
     LABEL_COLUMNS = [
@@ -14,16 +16,15 @@ class ToxicityDataset(Dataset):
         "obscene",
         "threat",
         "insult",
-        "identity_hate"
+        "identity_hate",
     ]
 
     def __init__(
         self,
         dataframe,
         tokenizer,
-        max_length=256
+        max_length=256,
     ):
-
         self.data = dataframe.reset_index(drop=True)
 
         self.tokenizer = tokenizer
@@ -31,42 +32,41 @@ class ToxicityDataset(Dataset):
         self.max_length = max_length
 
     def __len__(self):
-
         return len(self.data)
 
     def __getitem__(self, index):
 
         row = self.data.iloc[index]
 
-        comment = str(row["comment_text"])
+        comment = str(
+            row["comment_text"]
+        )
 
-        labels = row[
-            self.LABEL_COLUMNS
-        ].astype(float).values
+        labels = (
+            row[self.LABEL_COLUMNS]
+            .astype(float)
+            .values
+        )
 
         encoding = self.tokenizer(
-
             comment,
-
             truncation=True,
-
             padding="max_length",
-
             max_length=self.max_length,
-
-            return_tensors="pt"
-
+            return_tensors="pt",
         )
 
         return {
+            "input_ids": encoding[
+                "input_ids"
+            ].squeeze(0),
 
-            "input_ids": encoding["input_ids"].squeeze(0),
-
-            "attention_mask": encoding["attention_mask"].squeeze(0),
+            "attention_mask": encoding[
+                "attention_mask"
+            ].squeeze(0),
 
             "labels": torch.tensor(
                 labels,
-                dtype=torch.float32
-            )
-
+                dtype=torch.float32,
+            ),
         }

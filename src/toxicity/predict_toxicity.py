@@ -1,40 +1,156 @@
-from src.toxicity.toxicity_service import toxicity_service
+import numpy as np
+
+from src.toxicity.model_loader import ToxicityModelLoader
+from src.toxicity.preprocessing import clean_text
 
 
-def predict_toxicity(
-    student_id: int,
-    discussion_id: int,
-    post_text: str
-):
+LABELS = [
+    "toxic",
+    "severe_toxic",
+    "obscene",
+    "threat",
+    "insult",
+    "identity_hate",
+]
+
+THRESHOLD = 0.5
+
+
+class ToxicityPredictor:
     """
-    Predict toxicity for a discussion post.
+    Handles toxicity prediction using the trained
+    multi-label DistilBERT model.
     """
 
-    return toxicity_service.predict(
+    def __init__(
+        self,
+        model_path="models/toxicity",
+        threshold=THRESHOLD,
+    ):
 
-        student_id=student_id,
+        self.threshold = threshold
 
-        discussion_id=discussion_id,
+        self.loader = ToxicityModelLoader(
+            model_path=model_path
+        )
 
-        post_text=post_text
+        self.loader.load()
 
-    )
+    def predict(self, text):
+        """
+        Predict toxicity labels for a single text.
+        """
 
+        # ----------------------------------------------------
+        # Validate input
+        # ----------------------------------------------------
+
+        if text is None:
+
+            raise ValueError(
+                "Text cannot be None."
+            )
+
+        text = str(text).strip()
+
+        if not text:
+
+            raise ValueError(
+                "Text cannot be empty."
+            )
+
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Use exactly the same preprocessing as training.
+        # ----------------------------------------------------
+
+        cleaned_text = clean_text(
+            text
+        )
+
+        if not cleaned_text:
+
+            raise ValueError(
+                "Text became empty after preprocessing."
+            )
+
+        # ----------------------------------------------------
+        # Model prediction
+        # ----------------------------------------------------
+
+        probabilities = self.loader.predict(
+            cleaned_text
+        )
+
+        probabilities = np.asarray(
+            probabilities,
+            dtype=float,
+        )
+
+        # ----------------------------------------------------
+        # Convert probabilities to predictions
+        # ----------------------------------------------------
+
+        predictions = (
+            probabilities >= self.threshold
+        ).astype(int)
+
+        # ----------------------------------------------------
+        # Build result
+        # ----------------------------------------------------
+
+        label_results = {}
+
+        for index, label in enumerate(LABELS):
+
+            label_results[label] = {
+                "prediction": int(
+                    predictions[index]
+                ),
+                "probability": float(
+                    probabilities[index]
+                ),
+            }
+
+        # ----------------------------------------------------
+        # Overall toxicity
+        # ----------------------------------------------------
+
+        toxic_probability = float(
+            probabilities[0]
+        )
+
+        is_toxic = (
+            toxic_probability >= self.threshold
+        )
+
+        return {
+            "text": text,
+
+            "cleaned_text": cleaned_text,
+
+            "is_toxic": bool(
+                is_toxic
+            ),
+
+            "toxicity_score": toxic_probability,
+
+            "labels": label_results,
+
+            "threshold": self.threshold,
+        }
+
+
+# ------------------------------------------------------------
+# Local execution
+# ------------------------------------------------------------
 
 if __name__ == "__main__":
 
-    sample_text = "You are a stupid idiot."
-
-    result = predict_toxicity(
-
-        student_id=101,
-
-        discussion_id=5001,
-
-        post_text=sample_text
-
+    print(
+        "Toxicity predictor module loaded."
     )
 
-    print("\nPrediction Result\n")
-
-    print(result)
+    print(
+        "A trained model is required to run prediction."
+    )

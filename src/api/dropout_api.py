@@ -1,5 +1,7 @@
+from uuid import UUID
+
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.dropout.predict_dropout import predict_dropout
 from src.exceptions.custom_exceptions import EduAIException
@@ -11,29 +13,61 @@ router = APIRouter(
 )
 
 
-# ---------------------------------------
+# ============================================================
 # Input Schema
-# ---------------------------------------
+# ============================================================
 
 class DropoutInput(BaseModel):
 
-    sessions_last_30_days: int
-    avg_session_minutes: float
-    videos_watched: int
-    assignments_attempted: int
-    discussion_interactions: int
+    student_id: UUID
 
-    logins_last_30_days: int
-    days_since_last_login: int
+    sessions_last_30_days: int = Field(
+        ge=0
+    )
 
-    completion_percentage: float
-    quiz_average: float
-    assignment_completion_rate: float
+    avg_session_minutes: float = Field(
+        ge=0
+    )
+
+    videos_watched: int = Field(
+        ge=0
+    )
+
+    assignments_attempted: int = Field(
+        ge=0
+    )
+
+    discussion_interactions: int = Field(
+        ge=0
+    )
+
+    logins_last_30_days: int = Field(
+        ge=0
+    )
+
+    days_since_last_login: int = Field(
+        ge=0
+    )
+
+    completion_percentage: float = Field(
+        ge=0,
+        le=100
+    )
+
+    quiz_average: float = Field(
+        ge=0,
+        le=100
+    )
+
+    assignment_completion_rate: float = Field(
+        ge=0,
+        le=100
+    )
 
 
-# ---------------------------------------
-# Home Endpoint
-# ---------------------------------------
+# ============================================================
+# Root
+# ============================================================
 
 @router.get("/")
 def home():
@@ -41,53 +75,68 @@ def home():
     return {
         "success": True,
         "message": "Dropout Prediction API is Running",
-        "data": None
+        "data": {
+            "service": "dropout"
+        }
     }
 
 
-# ---------------------------------------
+# ============================================================
 # Health Check
-# ---------------------------------------
+# ============================================================
 
 @router.get("/health")
 def health():
 
     return {
-
         "success": True,
-
         "message": "Dropout Prediction Service Healthy",
-
         "data": {
-            "status": "healthy"
+            "status": "healthy",
+            "models_loaded": True
         }
-
     }
 
 
-# ---------------------------------------
-# Prediction Endpoint
-# ---------------------------------------
+# ============================================================
+# Prediction
+# ============================================================
 
 @router.post("/predict")
-def dropout_prediction(data: DropoutInput):
+def dropout_prediction(
+    data: DropoutInput
+):
 
     try:
 
+        # student_id is used by Node/DB,
+        # not by the ML model itself.
+        prediction_input = data.model_dump(
+            exclude={
+                "student_id"
+            }
+        )
+
         result = predict_dropout(
-            data.model_dump()
+            prediction_input
         )
 
         return {
-
             "success": True,
-
-            "message": "Dropout prediction completed successfully.",
-
-            "data": result
-
+            "message": (
+                "Dropout prediction "
+                "completed successfully."
+            ),
+            "data": {
+                "student_id": str(
+                    data.student_id
+                ),
+                **result
+            }
         }
 
     except Exception as e:
 
-        raise EduAIException(str(e))
+        raise EduAIException(
+            str(e)
+        )

@@ -13,11 +13,33 @@ class RecommendationPythonService {
 
             const response = await axios.post(
                 `${RECOMMENDATION_SERVICE}/recommendation/recommend`,
-                payload,
+                {
+                    user_id: payload.user_id,
+
+                    course_name:
+                        payload.course_name,
+
+                    courses:
+                        payload.courses,
+
+                    ratings:
+                        payload.ratings,
+
+                    user:
+                        payload.user,
+
+                    prerequisites:
+                        payload.prerequisites,
+
+                    completed_courses:
+                        payload.completed_courses
+                },
                 {
                     timeout: 10000,
+
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type":
+                            "application/json"
                     }
                 }
             );
@@ -45,7 +67,10 @@ class RecommendationPythonService {
 
 
             // Python service timeout
-            if (error.code === "ECONNABORTED") {
+            if (
+                error.code ===
+                "ECONNABORTED"
+            ) {
 
                 const serviceError =
                     new Error(
@@ -59,7 +84,10 @@ class RecommendationPythonService {
 
 
             // Python service unavailable
-            if (error.code === "ECONNREFUSED") {
+            if (
+                error.code ===
+                "ECONNREFUSED"
+            ) {
 
                 const serviceError =
                     new Error(

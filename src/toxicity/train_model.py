@@ -1,5 +1,6 @@
 import os
 import random
+
 import numpy as np
 import torch
 
@@ -9,7 +10,7 @@ from transformers import (
     DistilBertTokenizerFast,
     DistilBertForSequenceClassification,
     Trainer,
-    TrainingArguments
+    TrainingArguments,
 )
 
 from src.toxicity.preprocessing import load_and_preprocess
@@ -17,9 +18,9 @@ from src.toxicity.toxicity_dataset import ToxicityDataset
 from src.toxicity.evaluate_model import evaluate_model
 
 
-# ----------------------------------------
+# ============================================================
 # Configuration
-# ----------------------------------------
+# ============================================================
 
 MODEL_NAME = "distilbert-base-uncased"
 
@@ -31,12 +32,36 @@ BATCH_SIZE = 8
 
 EPOCHS = 1
 
+LEARNING_RATE = 2e-5
+
+VALIDATION_SIZE = 0.20
+
 SEED = 42
 
+NUM_LABELS = 6
 
-# ----------------------------------------
-# Set Random Seed
-# ----------------------------------------
+
+# ============================================================
+# Training Dataset Size
+# ============================================================
+#
+# Development:
+#     USE_SAMPLE = True
+#     SAMPLE_SIZE = 1000
+#
+# Full training:
+#     USE_SAMPLE = False
+#
+# ============================================================
+
+USE_SAMPLE = True
+
+SAMPLE_SIZE = 1000
+
+
+# ============================================================
+# Reproducibility
+# ============================================================
 
 random.seed(SEED)
 
@@ -44,98 +69,154 @@ np.random.seed(SEED)
 
 torch.manual_seed(SEED)
 
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 
-# ----------------------------------------
+
+# ============================================================
 # Load Dataset
-# ----------------------------------------
+# ============================================================
 
-print("\nLoading Toxicity Dataset...\n")
+print("\n" + "=" * 60)
+print("LOADING TOXICITY DATASET")
+print("=" * 60)
 
 df = load_and_preprocess()
 
-# -------------------------------------------------
-# Development Only
-# Remove this line for Production Training
-# -------------------------------------------------
+print(
+    f"\nTotal available samples: {len(df)}"
+)
 
-df = df.sample(
-    n=1000,
-    random_state=SEED
-).reset_index(drop=True)
+
+# ============================================================
+# Development Sampling
+# ============================================================
+
+if USE_SAMPLE:
+
+    if SAMPLE_SIZE > len(df):
+
+        raise ValueError(
+            f"SAMPLE_SIZE={SAMPLE_SIZE} is greater "
+            f"than available samples={len(df)}"
+        )
+
+    print(
+        f"\nDevelopment mode enabled."
+    )
+
+    print(
+        f"Using {SAMPLE_SIZE} samples."
+    )
+
+    df = df.sample(
+        n=SAMPLE_SIZE,
+        random_state=SEED,
+    ).reset_index(drop=True)
+
+else:
+
+    print(
+        "\nFull dataset training enabled."
+    )
+
+    df = df.reset_index(
+        drop=True
+    )
+
+
+print(
+    f"Dataset used for training: {len(df)}"
+)
+
+
+# ============================================================
+# Train / Validation Split
+# ============================================================
 
 train_df, val_df = train_test_split(
 
     df,
 
-    test_size=0.20,
+    test_size=VALIDATION_SIZE,
 
     random_state=SEED,
 
-    shuffle=True
-
+    shuffle=True,
 )
 
-print(f"Training Samples   : {len(train_df)}")
 
-print(f"Validation Samples : {len(val_df)}")
+print(
+    f"\nTraining Samples   : {len(train_df)}"
+)
+
+print(
+    f"Validation Samples : {len(val_df)}"
+)
 
 
-# ----------------------------------------
+# ============================================================
 # Load Tokenizer
-# ----------------------------------------
+# ============================================================
 
-print("\nLoading Tokenizer...\n")
+print("\n" + "=" * 60)
+print("LOADING TOKENIZER")
+print("=" * 60)
 
 tokenizer = DistilBertTokenizerFast.from_pretrained(
     MODEL_NAME
 )
 
 
-# ----------------------------------------
-# Create Dataset
-# ----------------------------------------
+# ============================================================
+# Create PyTorch Datasets
+# ============================================================
+
+print("\nCreating training dataset...")
 
 train_dataset = ToxicityDataset(
 
-    train_df,
+    dataframe=train_df,
 
-    tokenizer,
+    tokenizer=tokenizer,
 
-    MAX_LENGTH
-
+    max_length=MAX_LENGTH,
 )
+
+
+print("Creating validation dataset...")
 
 val_dataset = ToxicityDataset(
 
-    val_df,
+    dataframe=val_df,
 
-    tokenizer,
+    tokenizer=tokenizer,
 
-    MAX_LENGTH
-
+    max_length=MAX_LENGTH,
 )
 
 
-# ----------------------------------------
-# Load Model
-# ----------------------------------------
+# ============================================================
+# Load DistilBERT
+# ============================================================
 
-print("\nLoading DistilBERT Model...\n")
+print("\n" + "=" * 60)
+print("LOADING DISTILBERT MODEL")
+print("=" * 60)
 
 model = DistilBertForSequenceClassification.from_pretrained(
 
     MODEL_NAME,
 
-    num_labels=6,
+    num_labels=NUM_LABELS,
 
-    problem_type="multi_label_classification"
-
+    problem_type="multi_label_classification",
 )
 
 
-# ----------------------------------------
+# ============================================================
 # Training Arguments
-# ----------------------------------------
+# ============================================================
 
 training_args = TrainingArguments(
 
@@ -155,26 +236,30 @@ training_args = TrainingArguments(
 
     per_device_eval_batch_size=BATCH_SIZE,
 
-    learning_rate=2e-5,
+    learning_rate=LEARNING_RATE,
 
     weight_decay=0.01,
 
-    logging_steps=100,
+    logging_steps=50,
 
     save_total_limit=2,
 
     load_best_model_at_end=True,
 
+    metric_for_best_model="eval_loss",
+
+    greater_is_better=False,
+
     report_to="none",
 
-    use_cpu=True
+    use_cpu=True,
 
 )
 
 
-# ----------------------------------------
+# ============================================================
 # Trainer
-# ----------------------------------------
+# ============================================================
 
 trainer = Trainer(
 
@@ -186,51 +271,69 @@ trainer = Trainer(
 
     eval_dataset=val_dataset,
 
-    compute_metrics=evaluate_model
-
+    compute_metrics=evaluate_model,
 )
 
 
-# ----------------------------------------
-# Train
-# ----------------------------------------
+# ============================================================
+# Train Model
+# ============================================================
 
-print("\nStarting Toxicity Model Training...\n")
+print("\n" + "=" * 60)
+print("STARTING TOXICITY MODEL TRAINING")
+print("=" * 60)
 
 trainer.train()
 
-print("\nTraining Completed Successfully")
+
+print("\nTraining Completed Successfully.")
 
 
-# ----------------------------------------
-# Evaluate
-# ----------------------------------------
+# ============================================================
+# Evaluate Model
+# ============================================================
 
-print("\nEvaluating Model...\n")
+print("\n" + "=" * 60)
+print("EVALUATING MODEL")
+print("=" * 60)
 
 metrics = trainer.evaluate()
 
-print(metrics)
+print("\nEvaluation Metrics:")
+
+for key, value in metrics.items():
+
+    print(
+        f"{key}: {value}"
+    )
 
 
-# ----------------------------------------
+# ============================================================
 # Save Model
-# ----------------------------------------
+# ============================================================
 
-print("\nSaving Model...\n")
+print("\n" + "=" * 60)
+print("SAVING MODEL")
+print("=" * 60)
 
 os.makedirs(
-
     MODEL_PATH,
-
-    exist_ok=True
-
+    exist_ok=True,
 )
 
-trainer.save_model(MODEL_PATH)
+trainer.save_model(
+    MODEL_PATH
+)
 
-tokenizer.save_pretrained(MODEL_PATH)
+tokenizer.save_pretrained(
+    MODEL_PATH
+)
 
-print("\nModel Saved Successfully")
 
-print(f"Location : {MODEL_PATH}")
+print(
+    "\nModel Saved Successfully."
+)
+
+print(
+    f"Location: {MODEL_PATH}"
+)

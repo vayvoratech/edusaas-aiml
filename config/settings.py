@@ -1,5 +1,2 @@
-DB_HOST = "localhost"
-DB_NAME = "Vayvora_database"
-DB_USER = "postgres"
-DB_PASSWORD = "*********"
-DB_PORT = "5432"
+
+
