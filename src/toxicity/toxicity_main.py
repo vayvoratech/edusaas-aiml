@@ -1,81 +1,120 @@
-import os
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from src.toxicity.toxicity_service import toxicity_service
+from src.toxicity.toxicity_service import ToxicityService
 
+
+# ============================================================
+# FastAPI Application
+# ============================================================
 
 app = FastAPI(
-    title="EduSaaS Toxicity Detection API",
-    version="1.0.0"
+    title="Toxicity Detection API",
+    description="Multi-label toxicity detection using DistilBERT",
+    version="1.0.0",
 )
 
 
-class ToxicityRequest(BaseModel):
+# ============================================================
+# Request Schema
+# ============================================================
 
-    post_id: str = Field(
+class ToxicityRequest(BaseModel):
+    student_id: str = Field(
         ...,
-        examples=[
-            "21de70eb-efcd-47d0-99e3-72928628d228"
-        ]
+        description="Student identifier",
+    )
+
+    discussion_id: str = Field(
+        ...,
+        description="Discussion/post identifier",
     )
 
     post_text: str = Field(
         ...,
-        min_length=2,
-        max_length=5000,
-        examples=[
-            "You are a stupid idiot."
-        ]
+        min_length=1,
+        description="Discussion post text",
     )
 
 
-@app.get("/")
-def home():
+# ============================================================
+# Service
+# ============================================================
 
-    return {
-        "success": True,
-        "message": "EduSaaS Toxicity Detection API is Running"
-    }
+toxicity_service = None
 
+
+def get_toxicity_service():
+    """
+    Load the toxicity model lazily.
+
+    The model is loaded only when the API receives
+    its first prediction request.
+    """
+
+    global toxicity_service
+
+    if toxicity_service is None:
+
+        toxicity_service = ToxicityService()
+
+    return toxicity_service
+
+
+# ============================================================
+# Health Check
+# ============================================================
 
 @app.get("/health")
-def health():
+def health_check():
 
     return {
-        "success": True,
-        "message": "Toxicity Detection Service Healthy",
-        "model": "DistilBERT",
-        "version": os.getenv(
-            "MODEL_VERSION",
-            "1.0.0"
-        )
+        "status": "healthy",
+        "service": "toxicity",
     }
 
 
-@app.post("/toxicity/predict")
+# ============================================================
+# Toxicity Prediction
+# ============================================================
+
+@app.post("/predict-toxicity")
 def predict_toxicity(
-    request: ToxicityRequest
+    request: ToxicityRequest,
 ):
 
     try:
 
-        result = toxicity_service.predict(
-            student_id=request.post_id,
-            discussion_id=request.post_id,
-            post_text=request.post_text
+        service = get_toxicity_service()
+
+        result = service.predict(
+            student_id=request.student_id,
+            discussion_id=request.discussion_id,
+            post_text=request.post_text,
         )
 
         return {
             "success": True,
-            "message": "Toxicity prediction completed successfully.",
-            "data": result
+            "data": result,
         }
 
-    except Exception as e:
+    except ValueError as exc:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+    except FileNotFoundError as exc:
+
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        )
+
+    except Exception as exc:
 
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=f"Toxicity prediction failed: {exc}",
         )

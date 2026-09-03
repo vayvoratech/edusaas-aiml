@@ -1,98 +1,64 @@
-import torch
-
-from src.toxicity.model_loader import model_loader
-
-
-LABELS = [
-    "TOXIC",
-    "SEVERE_TOXIC",
-    "OBSCENE",
-    "THREAT",
-    "INSULT",
-    "IDENTITY_HATE"
-]
+from src.toxicity.predict_toxicity import ToxicityPredictor
 
 
 class ToxicityService:
     """
-    Toxicity Detection Inference Service.
+    Toxicity detection service.
 
-    Uses the pre-trained DistilBERT model.
-    Database persistence is handled by Node.
+    Responsible for connecting the application/API layer
+    with the toxicity prediction pipeline.
+
+    Database persistence is handled by the backend.
     """
 
-    def __init__(self):
-
-        self.model = model_loader.model
-        self.tokenizer = model_loader.tokenizer
+    def __init__(
+        self,
+        model_path="models/toxicity",
+        threshold=0.5,
+    ):
+        self.predictor = ToxicityPredictor(
+            model_path=model_path,
+            threshold=threshold,
+        )
 
     def predict(
         self,
         student_id: str,
         discussion_id: str,
-        post_text: str
+        post_text: str,
     ):
+        """
+        Run toxicity prediction for a discussion post.
 
-        try:
+        student_id and discussion_id are returned as metadata.
+        They are NOT passed to the ML model.
+        """
 
-            encoding = self.tokenizer(
-                post_text,
-                return_tensors="pt",
-                truncation=True,
-                padding=True,
-                max_length=256
+        if not post_text or not post_text.strip():
+            raise ValueError(
+                "post_text cannot be empty."
             )
 
-            with torch.no_grad():
+        result = self.predictor.predict(
+            post_text
+        )
 
-                outputs = self.model(
-                    **encoding
-                )
+        return {
+            "student_id": student_id,
+            "discussion_id": discussion_id,
+            "post_text": post_text,
 
-            probabilities = torch.sigmoid(
-                outputs.logits
-            ).squeeze()
+            "is_toxic": result["is_toxic"],
 
-            scores = probabilities.tolist()
+            "toxicity_score": result[
+                "toxicity_score"
+            ],
 
-            predictions = []
+            "predictions": result[
+                "labels"
+            ],
 
-            for index, score in enumerate(scores):
-
-                if score >= 0.50:
-
-                    predictions.append({
-                        "label": LABELS[index],
-                        "confidence": round(
-                            score * 100,
-                            2
-                        )
-                    })
-
-            if not predictions:
-
-                predictions.append({
-                    "label": "NON_TOXIC",
-                    "confidence": round(
-                        (1 - max(scores)) * 100,
-                        2
-                    )
-                })
-
-            return {
-                "student_id": student_id,
-                "discussion_id": discussion_id,
-                "post_text": post_text,
-                "predictions": predictions
-            }
-
-        except Exception as e:
-
-            print(
-                f"Toxicity Prediction Failed: {e}"
-            )
-
-            raise
-
-
-toxicity_service = ToxicityService()
+            "threshold": result[
+                "threshold"
+            ],
+        }

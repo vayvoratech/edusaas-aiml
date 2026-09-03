@@ -1,40 +1,59 @@
 import re
 
-import pandas as pd
 from datasets import load_dataset
 
 
-# ----------------------------------------
-# Clean Text
-# ----------------------------------------
+LABEL_COLUMNS = [
+    "toxic",
+    "severe_toxic",
+    "obscene",
+    "threat",
+    "insult",
+    "identity_hate",
+]
+
 
 def clean_text(text: str) -> str:
     """
-    Clean text before training.
+    Clean a single text input.
+    Used by both training and inference.
     """
+
+    if text is None:
+        return ""
 
     text = str(text).lower()
 
-    text = re.sub(r"http\S+", "", text)
+    text = re.sub(
+        r"https?://\S+|www\.\S+",
+        " ",
+        text,
+    )
 
-    text = re.sub(r"www\S+", "", text)
+    text = re.sub(
+        r"<[^>]+>",
+        " ",
+        text,
+    )
 
-    text = re.sub(r"<.*?>", "", text)
+    text = re.sub(
+        r"[^a-zA-Z0-9\s]",
+        " ",
+        text,
+    )
 
-    text = re.sub(r"[^a-zA-Z0-9\s]", " ", text)
-
-    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
 
     return text
 
 
-# ----------------------------------------
-# Load & Preprocess Dataset
-# ----------------------------------------
-
 def load_and_preprocess():
     """
-    Load and preprocess the Jigsaw Toxic Comment dataset.
+    Load the Jigsaw toxicity dataset and preprocess it.
     """
 
     print("\nLoading Toxicity Dataset...\n")
@@ -45,75 +64,99 @@ def load_and_preprocess():
 
     df = dataset["train"].to_pandas()
 
-    print(f"Original Dataset Shape : {df.shape}")
+    print(f"Original Dataset Shape: {df.shape}")
 
-    # ----------------------------------------
-    # Remove Duplicate Rows
-    # ----------------------------------------
+    # Remove duplicates
+    df = df.drop_duplicates(
+        subset=["comment_text"]
+    ).copy()
 
-    df.drop_duplicates(inplace=True)
+    print(f"After duplicates removed: {df.shape}")
 
-    # ----------------------------------------
-    # Remove Missing Values
-    # ----------------------------------------
+    # Remove missing comments
+    df = df.dropna(
+        subset=["comment_text"]
+    ).copy()
 
-    df.dropna(inplace=True)
+    # Convert once to string
+    df["comment_text"] = df["comment_text"].astype(str)
 
-    # ----------------------------------------
-    # Clean Text
-    # ----------------------------------------
+    print("Cleaning text...")
 
-    df["comment_text"] = df["comment_text"].apply(clean_text)
+    # Vectorized string operations.
+    # Much faster than Series.apply(clean_text).
 
-    # ----------------------------------------
-    # Remove Empty Comments
-    # ----------------------------------------
+    df["comment_text"] = (
+        df["comment_text"]
+        .str.lower()
+        .str.replace(
+            r"https?://\S+|www\.\S+",
+            " ",
+            regex=True,
+        )
+        .str.replace(
+            r"<[^>]+>",
+            " ",
+            regex=True,
+        )
+        .str.replace(
+            r"[^a-zA-Z0-9\s]",
+            " ",
+            regex=True,
+        )
+        .str.replace(
+            r"\s+",
+            " ",
+            regex=True,
+        )
+        .str.strip()
+    )
 
-    df = df[df["comment_text"].str.strip() != ""]
-
-    # ----------------------------------------
-    # Reset Index
-    # ----------------------------------------
+    # Remove empty comments
+    df = df[
+        df["comment_text"].str.len() > 0
+    ].copy()
 
     df.reset_index(
         drop=True,
-        inplace=True
+        inplace=True,
     )
-
-    print(f"Processed Dataset Shape : {df.shape}")
-
-    # ----------------------------------------
-    # Label Statistics
-    # ----------------------------------------
-
-    print("\nLabel Distribution\n")
 
     print(
-        df[
-            [
-                "toxic",
-                "severe_toxic",
-                "obscene",
-                "threat",
-                "insult",
-                "identity_hate"
-            ]
-        ].sum()
+        f"Processed Dataset Shape: {df.shape}"
     )
 
-    print("\nDataset Ready For Training\n")
+    print("\nLabel Distribution:\n")
+
+    print(
+        df[LABEL_COLUMNS].sum()
+    )
+
+    print("\nDataset preprocessing completed.\n")
 
     return df
 
-
-# ----------------------------------------
-# Test
-# ----------------------------------------
 
 if __name__ == "__main__":
 
     dataframe = load_and_preprocess()
 
-    print("\nFirst Five Records\n")
+    print("\nFirst 5 records:\n")
 
-    print(dataframe.head())
+    print(
+        dataframe[
+            ["comment_text"] + LABEL_COLUMNS
+        ].head()
+    )
+
+    print("\nCleaning test:\n")
+
+    test_text = """
+    You are an idiot!!! Visit https://example.com
+    """
+
+    print("Original:")
+    print(test_text)
+
+    print("\nCleaned:")
+    print(clean_text(test_text))

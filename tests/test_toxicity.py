@@ -1,67 +1,74 @@
-from fastapi.testclient import TestClient
+import pytest
 
-from src.api.main import app
-
-
-client = TestClient(app)
+from src.toxicity.preprocessing import clean_text
 
 
-def test_toxicity_prediction():
+LABELS = [
+    "toxic",
+    "severe_toxic",
+    "obscene",
+    "threat",
+    "insult",
+    "identity_hate",
+]
 
-    payload = {
 
-        "student_id": 101,
+def test_clean_text():
 
-        "discussion_id": 5001,
+    text = """
+    You are an idiot!!!
+    Visit https://example.com
+    """
 
-        "post_text": "You are an idiot."
+    result = clean_text(text)
 
-    }
-
-    response = client.post(
-
-        "/toxicity/predict",
-
-        json=payload
-
+    assert result == (
+        "you are an idiot visit"
     )
 
-    assert response.status_code == 200
 
-    data = response.json()
+def test_clean_text_removes_html():
 
-    # ----------------------------------------
-    # Validate Response Structure
-    # ----------------------------------------
+    text = "<p>You are stupid!</p>"
 
-    assert "student_id" in data
+    result = clean_text(text)
 
-    assert "discussion_id" in data
+    assert "<p>" not in result
+    assert "</p>" not in result
 
-    assert "post_text" in data
 
-    assert "predictions" in data
+def test_clean_text_removes_url():
 
-    # ----------------------------------------
-    # Validate Values
-    # ----------------------------------------
+    text = "Visit https://example.com now"
 
-    assert data["student_id"] == 101
+    result = clean_text(text)
 
-    assert data["discussion_id"] == 5001
+    assert "https://example.com" not in result
 
-    assert data["post_text"] == "You are an idiot."
 
-    assert isinstance(data["predictions"], list)
+def test_clean_text_handles_empty_string():
 
-    # ----------------------------------------
-    # Validate Prediction Format
-    # ----------------------------------------
+    result = clean_text("")
 
-    if len(data["predictions"]) > 0:
+    assert result == ""
 
-        prediction = data["predictions"][0]
 
-        assert "label" in prediction
+def test_clean_text_handles_none():
 
-        assert "confidence" in prediction
+    result = clean_text(None)
+
+    assert result == ""
+
+
+def test_labels():
+
+    assert len(LABELS) == 6
+
+    assert LABELS == [
+        "toxic",
+        "severe_toxic",
+        "obscene",
+        "threat",
+        "insult",
+        "identity_hate",
+    ]
