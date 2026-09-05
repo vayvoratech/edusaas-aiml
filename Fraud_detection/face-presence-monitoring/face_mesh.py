@@ -14,9 +14,7 @@ class FaceMeshDetector:
         min_tracking_confidence=0.5,
     ):
 
-        # =====================================================
-        # LOCATE MODEL
-        # =====================================================
+        
 
         if model_path is None:
 

@@ -968,7 +968,7 @@ if __name__ == "__main__":
     print("Any second violation -> TERMINATE_EXAM")
     print("Blink/Mouth/Eye event count -> 5 warning, 10 terminate")
     print("Head pose -> REMOVED")
-    print("==============================================")
+    print("=======================================")
 
     uvicorn.run(
         app,

@@ -18,10 +18,7 @@ class EyeTracker:
         self.RIGHT_IRIS = 473
 
 
-        # ==================================================
-        # THRESHOLDS
-        # ==================================================
-
+       
         # These are intentionally less aggressive.
         #
         # < 0.40  -> left

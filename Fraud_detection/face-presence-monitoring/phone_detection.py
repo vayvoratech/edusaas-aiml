@@ -5,7 +5,7 @@ import time
 from ultralytics import YOLO
 
 
-class PhoneDetector:
+class PhoneDetect0r:
 
     def __init__(
         self,
