@@ -17,13 +17,15 @@ RUN apt-get update \
         libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Install Python dependencies
+COPY Fraud_detection/face-presence-monitoring/requirements.txt .
 
 RUN python -m pip install --upgrade pip \
     && pip install -r requirements.txt
 
-COPY . .
+# Copy the face monitoring application
+COPY Fraud_detection/face-presence-monitoring/ .
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
