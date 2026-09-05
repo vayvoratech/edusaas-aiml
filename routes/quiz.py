@@ -28,7 +28,8 @@ def create_state():
 
     state = engine.create_quiz_state(
         data["session_id"],
-        data["skill"]
+        data["skill"],
+        data.get("assessment_type", "INITIAL")
     )
 
     return jsonify({

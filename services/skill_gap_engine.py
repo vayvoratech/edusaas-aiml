@@ -66,30 +66,24 @@ class SkillGapEngine:
                 "status": status
 
             })
-
-            total_student += student_level
+            effective_student_level = min(
+                student_level,
+                required_level
+            )
+            total_student += effective_student_level
             total_required += required_level
 
+        # Calculate readiness score after the loop finishes
         if total_required == 0:
-
             readiness_score = 0
-
         else:
-
             readiness_score = round(
-
                 (total_student / total_required) * 100,
-
                 2
-
             )
 
         return {
-
             "skill_gap": deepcopy(report),
-
             "readiness_score": readiness_score,
-
             "missing_skills": deepcopy(missing_skills)
-
         }
