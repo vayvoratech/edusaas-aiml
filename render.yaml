@@ -1,0 +1,36 @@
+services:
+  # ---------------------------------------------------------------------------
+  # SERVICE 1: Unified AI, Proctoring, Plagiarism & Quiz Service
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: aiml-unified-service
+    runtime: docker
+    dockerfilePath: ./aiml-unified-service/Dockerfile
+    dockerContext: ./aiml-unified-service
+    plan: standard # Standard or higher recommended for OpenCV/MediaPipe/YOLO memory load
+    region: oregon # or frankfurt, singapore, ohio
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+  # ---------------------------------------------------------------------------
+  # SERVICE 2: Sandboxed Multi-Compiler Code Execution Engine
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: assignment-execution-service
+    runtime: docker
+    dockerfilePath: ./assignment-execution-service/Dockerfile
+    dockerContext: ./assignment-execution-service
+    plan: starter # Starter plan recommended for compiling GCC/Java in-memory
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
