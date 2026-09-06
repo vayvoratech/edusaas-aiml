@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.skill_gap_engine import SkillGapEngine
+from modules.quiz.services.skill_gap_engine import SkillGapEngine
 
 skill_gap_bp = Blueprint("skill_gap", __name__)
 
