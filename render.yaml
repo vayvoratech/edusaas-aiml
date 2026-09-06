@@ -5,10 +5,10 @@ services:
   - type: web
     name: aiml-unified-service
     runtime: docker
-    dockerfilePath: ./aiml-unified-service/Dockerfile
-    dockerContext: ./aiml-unified-service
-    plan: standard # Standard or higher recommended for OpenCV/MediaPipe/YOLO memory load
-    region: oregon # or frankfurt, singapore, ohio
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: standard # Standard plan recommended for MediaPipe, OpenCV, and YOLO memory load
+    region: oregon # Options: oregon, frankfurt, ohio, singapore
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -23,9 +23,9 @@ services:
   - type: web
     name: assignment-execution-service
     runtime: docker
-    dockerfilePath: ./assignment-execution-service/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: ./assignment-execution-service
-    plan: starter # Starter plan recommended for compiling GCC/Java in-memory
+    plan: starter # Starter plan recommended for multi-language in-memory compilation
     region: oregon
     healthCheckPath: /
     autoDeploy: true
