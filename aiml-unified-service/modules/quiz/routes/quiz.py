@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.adaptive_engine import AdaptiveEngine
+from modules.quiz.services.adaptive_engine import AdaptiveEngine
 
 quiz_bp = Blueprint("quiz", __name__)
 
