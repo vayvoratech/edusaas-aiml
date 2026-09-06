@@ -21,7 +21,6 @@ flask_app.register_blueprint(skill_gap_bp, url_prefix="/")
 # -----------------------------------------------------------------------------
 # 2. PLAGIARISM SERVICE INTEGRATION (FASTAPI ROUTER)
 # -----------------------------------------------------------------------------
-from modules.plagiarism.routes.plagiarism_routes import router as plagiarism_router
 
 # -----------------------------------------------------------------------------
 # 3. AI PROCTORING ENGINES & COMPUTER VISION
@@ -52,7 +51,6 @@ app.add_middleware(
 )
 
 # Mount Modular Routers
-app.include_router(plagiarism_router, prefix="/api/plagiarism", tags=["Plagiarism"])
 app.mount("/api/quiz", WSGIMiddleware(flask_app))
 app.mount("/api/skill-gap", WSGIMiddleware(flask_app))
 
