@@ -14,15 +14,25 @@ class FacePresenceDetector:
 
         if model_path is None:
 
-            project_root = (
-                Path(__file__).resolve().parent
-            )
+            current_dir = Path(__file__).resolve().parent
 
-            model_path = (
-                project_root
-                / "models"
-                / "blaze_face_short_range.tflite"
-            )
+            # Try common valid root locations
+            candidates = [
+                current_dir.parent.parent / "models" / "blaze_face_short_range.tflite",  # root/models
+                Path("/app/models/blaze_face_short_range.tflite"),                       # Docker /app/models
+                current_dir / "models" / "blaze_face_short_range.tflite",               # local modules/proctoring/models
+                Path("models/blaze_face_short_range.tflite"),                           # cwd relative
+            ]
+
+            model_path = next((p for p in candidates if p.is_file()), None)
+
+            if model_path is None:
+                raise FileNotFoundError(
+                    "\nMediaPipe face detector model not found:\n"
+                    f"Searched in: {[str(p) for p in candidates]}\n\n"
+                    "Expected at:\n"
+                    "models/blaze_face_short_range.tflite"
+                )
 
         self.model_path = Path(
             model_path

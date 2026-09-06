@@ -17,28 +17,29 @@ class FaceMeshDetector:
         
 
         if model_path is None:
+            current_dir = Path(__file__).resolve().parent
 
-            project_root = Path(
-                __file__
-            ).resolve().parent
+            candidates = [
+                current_dir.parent.parent / "models" / "face_landmarker.task",  # <root>/models
+                Path("/app/models/face_landmarker.task"),                        # Docker /app/models
+                current_dir / "models" / "face_landmarker.task",                # local models folder
+                Path("models/face_landmarker.task"),                            # cwd relative
+            ]
 
-            model_path = (
-                project_root
-                / "models"
-                / "face_landmarker.task"
-            )
+            model_path = next((p for p in candidates if p.is_file()), None)
 
-        self.model_path = Path(
-            model_path
-        )
+            if model_path is None:
+                raise FileNotFoundError(
+                    "\nMediaPipe Face Landmarker model not found:\n"
+                    f"Searched in: {[str(p) for p in candidates]}\n\n"
+                    "Expected at:\n"
+                    "models/face_landmarker.task"
+                )
 
-        print(
-            "Loading MediaPipe Face Landmarker:"
-        )
+        self.model_path = Path(model_path)
 
-        print(
-            f"Model: {self.model_path}"
-        )
+        print("Loading MediaPipe Face Landmarker:")
+        print(f"Model: {self.model_path}")
 
         if not self.model_path.exists():
 

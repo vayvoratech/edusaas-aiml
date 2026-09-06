@@ -1,4 +1,4 @@
-
+from pathlib import Path
 import cv2
 import threading
 import time
@@ -14,14 +14,34 @@ class PhoneDetector:
         imgsz=640,
         inference_interval=0.05
     ):
+        self.confidence = confidence
+        self.imgsz = imgsz
+        self.inference_interval = inference_interval
+
+        # ==================================================
+        # MODEL PATH RESOLUTION
+        # ==================================================
+        current_dir = Path(__file__).resolve().parent
+
+        candidates = [
+            current_dir.parent.parent / "models" / "yolo11s.pt",  # root models/
+            Path("/app/models/yolo11s.pt"),                       # container root
+            Path("models/yolo11s.pt"),                            # cwd models/
+            current_dir / "models" / "yolo11s.pt",                # module local
+            Path(model_path),                                     # explicit argument
+        ]
+
+        resolved_path = next((p for p in candidates if p.is_file()), None)
+
+        self.model_path = str(resolved_path) if resolved_path else model_path
+
+        print("Loading YOLO Phone Detector:")
+        print(f"Model: {self.model_path}")
 
         # ==================================================
         # MODEL
         # ==================================================
-
-        self.model = YOLO(
-            model_path
-        )
+        self.model = YOLO(self.model_path)
 
         # COCO class:
         # 67 = cell phone
