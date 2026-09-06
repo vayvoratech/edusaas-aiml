@@ -48,10 +48,6 @@ RUN useradd -m -u 10001 -s /bin/bash sandboxrunner
 WORKDIR /app
 RUN mkdir -p /tmp/sandboxes && chown -R sandboxrunner:sandboxrunner /tmp/sandboxes
 
-# Install Express API dependencies
-COPY package*.json ./
-RUN npm install --omit=dev
-
 # Copy application backend source files (server.js, src/, etc.)
 COPY . .
 
