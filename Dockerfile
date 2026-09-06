@@ -16,6 +16,9 @@ RUN apt-get update \
         libxext6 \
         libxrender1 \
         libgomp1 \
+        libegl1 \
+        libgles2 \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python requirements from subfolder
