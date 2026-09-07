@@ -9,7 +9,7 @@ class PhoneDetector:
 
     def __init__(
         self,
-        model_path="yolo11s.pt",
+        model_path="yolo26n.pt",
         confidence=0.15,
         imgsz=640,
         inference_interval=0.05
@@ -24,10 +24,10 @@ class PhoneDetector:
         current_dir = Path(__file__).resolve().parent
 
         candidates = [
-            current_dir.parent.parent / "models" / "yolo11s.pt",  # root models/
-            Path("/app/models/yolo11s.pt"),                       # container root
-            Path("models/yolo11s.pt"),                            # cwd models/
-            current_dir / "models" / "yolo11s.pt",                # module local
+            current_dir.parent.parent / "models" / "yolo26n.pt",  # root models/
+            Path("/app/models/yolo26n.pt"),                       # container root
+            Path("models/yolo26n.pt"),                            # cwd models/
+            current_dir / "models" / "yolo26n.pt",                # module local
             Path(model_path),                                     # explicit argument
         ]
 
