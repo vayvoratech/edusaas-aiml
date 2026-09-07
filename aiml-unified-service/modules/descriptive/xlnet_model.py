@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -150,3 +151,4 @@ def fallback_similarity(text1, text2):
     similarity = intersection / union if union > 0 else 0
     
     return round(similarity * 100)
+# hello 
