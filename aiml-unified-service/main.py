@@ -2,17 +2,15 @@ import base64
 from http.client import HTTPException
 import os
 import time
+import traceback
 from typing import Any, List, Optional
 from uuid import UUID
 
 
-
-import base64
-import time
 import cv2
 import numpy as np
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.wsgi import WSGIMiddleware
 from flask import Flask
@@ -32,6 +30,7 @@ flask_app.register_blueprint(skill_gap_bp, url_prefix="/")
 # 2. INDIVIDUAL ML SERVICE ROUTERS IMPORT
 # -----------------------------------------------------------------------------
 
+from modules.descriptive.xlnet_model import get_similarity_score
 
 # -----------------------------------------------------------------------------
 # 3. AI PROCTORING ENGINES & COMPUTER VISION
@@ -52,6 +51,12 @@ from modules.dropout.predict_dropout import predict_dropout
 from modules.hiring.hiring_service import hiring_service
 from modules.recommendation.recommend import get_recommendations
 from modules.exceptions.custom_exceptions import EduAIException
+
+
+# code_plagiarism
+
+from modules.plagiarism.routes.plagiarism_routes import router as plagiarism_router
+
 # -----------------------------------------------------------------------------
 # APPLICATION FACTORY & SETUP
 # -----------------------------------------------------------------------------
@@ -72,8 +77,7 @@ app.add_middleware(
 # Mount Modular Routers
 app.mount("/api/quiz", WSGIMiddleware(flask_app))
 app.mount("/api/skill-gap", WSGIMiddleware(flask_app))
-
-
+app.include_router(plagiarism_router, prefix="/api/plagiarism", tags=["Plagiarism Detection"])
 
 # =============================================================================
 # SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
@@ -239,6 +243,69 @@ def recommendation_api(request: RecommendationRequest):
         }
     except Exception as e:
         raise EduAIException(str(e))
+    
+    
+    
+# =============================================================================
+# SECTION D: DESCRIPTIVE ANSWER EVALUATION (XLNET)
+# =============================================================================
+
+class EvaluationRequest(BaseModel):
+    question_text: str = Field(..., description="The question text")
+    student_answer_text: str = Field(..., description="The student answer")
+    reference_answer_text: str = Field(..., description="The expected benchmark answer")
+
+
+@app.get("/api/evaluation/", tags=["Descriptive Answer Evaluation"])
+def evaluation_home():
+    return {
+        "success": True,
+        "service": "Descriptive Answer Evaluation",
+        "status": "running"
+    }
+
+
+@app.post("/api/evaluation/evaluate", tags=["Descriptive Answer Evaluation"])
+def evaluate_descriptive_answer(payload: EvaluationRequest):
+    try:
+        q_text = payload.question_text.strip()
+        ans_text = payload.student_answer_text.strip()
+        ref_text = payload.reference_answer_text.strip()
+
+        if not q_text or not ans_text or not ref_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="question_text, student_answer_text, and reference_answer_text must not be empty."
+            )
+
+        similarity_score = get_similarity_score(q_text, ans_text, ref_text)
+
+        # Apply score adjustments
+        if similarity_score >= 75:
+            similarity_score += 20
+        elif 70 <= similarity_score < 75:
+            similarity_score += 18
+        elif 60 <= similarity_score < 65:
+            similarity_score += 16
+        else:
+            similarity_score -= 10
+
+        return {
+            "success": True,
+            "score": similarity_score
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("\n========================================")
+        print("XLNet Evaluation Error")
+        print("========================================")
+        print(str(e))
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
     
 
 # -----------------------------------------------------------------------------
@@ -768,6 +835,7 @@ async def root():
         "endpoints": {
             "proctoring_websocket": "/ws/proctor",
             "plagiarism_api": "/api/plagiarism/check",
+            "evaluation_api": "/api/evaluation/evaluate",
             "quiz_api": "/api/quiz/*",
             "skill_gap_api": "/api/skill-gap/*",
             "dropout_api": "/api/dropout/predict",
@@ -801,7 +869,7 @@ async def health():
         "service": "aiml-unified-service",
         "components": ["proctoring", "plagiarism", "quiz", "skill-gap","dropout",
             "hiring",
-            "recommendation"]
+            "recommendation","evaluation"]
     }
 
 # -----------------------------------------------------------------------------
@@ -814,6 +882,7 @@ if __name__ == "__main__":
     print("HTTP Root          : http://0.0.0.0:8000/")
     print("Proctoring WS      : ws://0.0.0.0:8000/ws/proctor")
     print("Plagiarism Engine  : http://0.0.0.0:8000/api/plagiarism/check")
+    print("Evaluation Engine  : http://0.0.0.0:8000/api/evaluation/evaluate")
     print("Quiz API           : http://0.0.0.0:8000/api/quiz/")
     print("Skill Gap API      : http://0.0.0.0:8000/api/skill-gap/")
     print("Dropout API        : http://0.0.0.0:8000/api/dropout/")
