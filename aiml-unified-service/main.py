@@ -4,7 +4,8 @@ import time
 import traceback
 from typing import Any, List, Optional
 from uuid import UUID
-from http.client import HTTPException
+from fastapi import HTTPException
+from contextlib import asynccontextmanager
 
 import cv2
 import numpy as np
@@ -875,7 +876,7 @@ async def health():
 # APPLICATION ENTRYPOINT
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 10000))
     print("\n==============================================")
     print("Starting EduSaaS Unified AI & Proctoring Service")
     print("==============================================")
