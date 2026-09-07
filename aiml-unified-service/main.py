@@ -1,4 +1,13 @@
 import base64
+from http.client import HTTPException
+import os
+import time
+from typing import Any, List, Optional
+from uuid import UUID
+
+
+
+import base64
 import time
 import cv2
 import numpy as np
@@ -7,6 +16,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.wsgi import WSGIMiddleware
 from flask import Flask
+from pydantic import BaseModel, Field
 
 # -----------------------------------------------------------------------------
 # 1. QUIZ SERVICE INTEGRATION (FLASK WSGI MOUNT)
@@ -19,8 +29,8 @@ flask_app.register_blueprint(quiz_bp, url_prefix="/")
 flask_app.register_blueprint(skill_gap_bp, url_prefix="/")
 
 # -----------------------------------------------------------------------------
-# 2. PLAGIARISM SERVICE INTEGRATION (FASTAPI ROUTER)
-# -----------------------------------------------------------------------------
+# 2. INDIVIDUAL ML SERVICE ROUTERS IMPORT
+# ----------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------
 # 3. AI PROCTORING ENGINES & COMPUTER VISION
@@ -33,13 +43,21 @@ from modules.proctoring.mouth_detection import MouthDetector
 from modules.proctoring.phone_detection import PhoneDetector
 from modules.proctoring.fraud_engine import FraudEngine
 
+
+# -----------------------------------------------------------------------------
+# 4. BACKEND ML ENGINES & EXCEPTIONS
+# -----------------------------------------------------------------------------
+from modules.dropout.predict_dropout import predict_dropout
+from modules.hiring.hiring_service import hiring_service
+from modules.recommendation.recommend import get_recommendations
+from modules.exceptions.custom_exceptions import EduAIException
 # -----------------------------------------------------------------------------
 # APPLICATION FACTORY & SETUP
 # -----------------------------------------------------------------------------
 app = FastAPI(
     title="EduSaaS Unified AI & Proctoring Service",
     version="2.0.0",
-    description="Unified single-gateway engine for Proctoring, Plagiarism, Quiz, and Skill Gap."
+    description="Unified single-gateway engine for Proctoring, Plagiarism, Quiz, Skill Gap, Dropout, Hiring, and Recommendations."
 )
 
 app.add_middleware(
@@ -53,6 +71,174 @@ app.add_middleware(
 # Mount Modular Routers
 app.mount("/api/quiz", WSGIMiddleware(flask_app))
 app.mount("/api/skill-gap", WSGIMiddleware(flask_app))
+
+
+
+# =============================================================================
+# SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
+# =============================================================================
+
+class DropoutInput(BaseModel):
+    student_id: UUID
+    sessions_last_30_days: int = Field(..., ge=0)
+    avg_session_minutes: float = Field(..., ge=0)
+    videos_watched: int = Field(..., ge=0)
+    assignments_attempted: int = Field(..., ge=0)
+    discussion_interactions: int = Field(..., ge=0)
+    logins_last_30_days: int = Field(..., ge=0)
+    days_since_last_login: int = Field(..., ge=0)
+    completion_percentage: float = Field(..., ge=0, le=100)
+    quiz_average: float = Field(..., ge=0, le=100)
+    assignment_completion_rate: float = Field(..., ge=0, le=100)
+
+
+@app.get("/api/dropout/", tags=["Dropout Prediction"])
+def dropout_home():
+    return {
+        "success": True,
+        "message": "Dropout Prediction API is Running",
+        "data": {
+            "service": "dropout"
+        }
+    }
+
+
+@app.get("/api/dropout/health", tags=["Dropout Prediction"])
+def dropout_health():
+    return {
+        "success": True,
+        "message": "Dropout Prediction Service Healthy",
+        "data": {
+            "status": "healthy",
+            "models_loaded": True
+        }
+    }
+
+
+@app.post("/api/dropout/predict", tags=["Dropout Prediction"])
+def dropout_prediction(data: DropoutInput):
+    try:
+        prediction_input = data.model_dump(
+            exclude={"student_id"}
+        )
+
+        result = predict_dropout(prediction_input)
+
+        return {
+            "success": True,
+            "message": "Dropout prediction completed successfully.",
+            "data": {
+                "student_id": str(data.student_id),
+                **result
+            }
+        }
+    except Exception as e:
+        raise EduAIException(str(e))
+    
+# =============================================================================
+# SECTION B: PREDICTIVE HIRING SCHEMAS & ENDPOINTS
+# =============================================================================
+
+class HiringRequest(BaseModel):
+    experience_years: float = Field(0, ge=0)
+    required_experience_years: float = Field(0, ge=0)
+    skill_match_score: float = Field(..., ge=0, le=1)
+    experience_match_score: float = Field(..., ge=0, le=1)
+    domain_match: int = Field(..., ge=0, le=1)
+    profile_score: float = Field(..., ge=0, le=100)
+
+
+@app.get("/api/hiring/", tags=["Predictive Hiring"])
+def hiring_home():
+    return {
+        "success": True,
+        "message": "Predictive Hiring API is Running"
+    }
+
+
+@app.get("/api/hiring/health", tags=["Predictive Hiring"])
+def hiring_health():
+    return {
+        "success": True,
+        "message": "Predictive Hiring Service Healthy",
+        "model": "Random Forest",
+        "version": "1.0.0"
+    }
+
+
+@app.post("/api/hiring/predict", tags=["Predictive Hiring"])
+def predict_hiring_endpoint(request: HiringRequest):
+    try:
+        result = hiring_service.predict(
+            request.model_dump()
+        )
+
+        return {
+            "success": True,
+            "message": "Hiring prediction completed successfully.",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+# =============================================================================
+# SECTION C: COURSE RECOMMENDATION SCHEMAS & ENDPOINTS
+# =============================================================================
+
+class RecommendationRequest(BaseModel):
+    user_id: UUID
+    course_name: str
+    courses: List[dict[str, Any]] = Field(default_factory=list)
+    ratings: List[dict[str, Any]] = Field(default_factory=list)
+    user: Optional[dict[str, Any]] = None
+    prerequisites: List[dict[str, Any]] = Field(default_factory=list)
+    completed_courses: List[dict[str, Any]] = Field(default_factory=list)
+
+
+@app.get("/api/recommendation/", tags=["Recommendation System"])
+def recommendation_home():
+    return {
+        "success": True,
+        "message": "Recommendation API Running",
+        "data": None
+    }
+
+
+@app.get("/api/recommendation/health", tags=["Recommendation System"])
+def recommendation_health():
+    return {
+        "success": True,
+        "message": "Recommendation Service Healthy",
+        "data": {
+            "status": "healthy"
+        }
+    }
+
+
+@app.post("/api/recommendation/recommend", tags=["Recommendation System"])
+def recommendation_api(request: RecommendationRequest):
+    try:
+        result = get_recommendations(
+            user_id=request.user_id,
+            course_name=request.course_name,
+            courses=request.courses,
+            user=request.user,
+            prerequisites=request.prerequisites,
+            completed_courses=request.completed_courses
+        )
+
+        return {
+            "success": True,
+            "message": "Recommendations generated successfully.",
+            "data": result
+        }
+    except Exception as e:
+        raise EduAIException(str(e))
+    
 
 # -----------------------------------------------------------------------------
 # PROCTORING CONSTANTS & MODEL LOADING
@@ -582,7 +768,10 @@ async def root():
             "proctoring_websocket": "/ws/proctor",
             "plagiarism_api": "/api/plagiarism/check",
             "quiz_api": "/api/quiz/*",
-            "skill_gap_api": "/api/skill-gap/*"
+            "skill_gap_api": "/api/skill-gap/*",
+            "dropout_api": "/api/dropout/predict",
+            "hiring_api": "/api/hiring/predict",
+            "recommendation_api": "/api/recommendation/recommend"
         },
         "models": {
             "face_presence": "MediaPipe",
@@ -591,7 +780,10 @@ async def root():
             "blink": "MediaPipe",
             "mouth": "MediaPipe",
             "phone": "YOLO11s",
-            "head_pose": "REMOVED",
+            "dropout": "RandomForest",
+            "hiring": "RandomForest",
+            "recommendation": "Hybrid SVD + ContentSimilarity",
+            "head_pose": "REMOVED"
         },
         "fraud_policy": {
             "global_violation_limit": 2,
@@ -606,7 +798,9 @@ async def health():
     return {
         "status": "healthy",
         "service": "aiml-unified-service",
-        "components": ["proctoring", "plagiarism", "quiz", "skill-gap"]
+        "components": ["proctoring", "plagiarism", "quiz", "skill-gap","dropout",
+            "hiring",
+            "recommendation"]
     }
 
 # -----------------------------------------------------------------------------
@@ -621,8 +815,10 @@ if __name__ == "__main__":
     print("Plagiarism Engine  : http://0.0.0.0:8000/api/plagiarism/check")
     print("Quiz API           : http://0.0.0.0:8000/api/quiz/")
     print("Skill Gap API      : http://0.0.0.0:8000/api/skill-gap/")
+    print("Dropout API        : http://0.0.0.0:8000/api/dropout/")
+    print("Hiring API         : http://0.0.0.0:8000/api/hiring/")
+    print("Recommendation API : http://0.0.0.0:8000/api/recommendation/")
     print("==============================================\n")
-
     uvicorn.run(
         app,
         host="0.0.0.0",

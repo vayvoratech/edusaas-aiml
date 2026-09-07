@@ -1,13 +1,13 @@
 services:
   # ---------------------------------------------------------------------------
-  # SERVICE 1: Unified AI, Proctoring, Plagiarism & Quiz Service
+  # SERVICE 1: Unified AI, Proctoring, Plagiarism, Quiz & ML Analytics Engine
   # ---------------------------------------------------------------------------
   - type: web
     name: aiml-unified-service
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    plan: standard # Standard plan recommended for MediaPipe, OpenCV, and YOLO memory load
+    plan: standard # Standard plan (2GB RAM) recommended for MediaPipe, OpenCV, YOLO, and DistilBERT
     region: oregon # Options: oregon, frankfurt, ohio, singapore
     healthCheckPath: /health
     autoDeploy: true
@@ -16,6 +16,23 @@ services:
         value: 10000
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: MODEL_VERSION
+        value: "1.0.0"
+      # Control multithreading to avoid CPU throttling during simultaneous model inferences
+      - key: OMP_NUM_THREADS
+        value: "2"
+      - key: MKL_NUM_THREADS
+        value: "2"
+      - key: TOKENIZERS_PARALLELISM
+        value: "false"
+      # Database connection for Gamification activity logs and Sentiment storage
+      - key: DATABASE_URL
+        fromDatabase:
+          name: edusaas-db # Replace with your Render PostgreSQL service name if managed on Render
+          property: connectionString
+      # If using an external PostgreSQL URL (e.g. Supabase, Neon, AWS RDS), use:
+      # - key: DATABASE_URL
+      #   value: postgresql://username:password@host:5432/dbname
 
   # ---------------------------------------------------------------------------
   # SERVICE 2: Sandboxed Multi-Compiler Code Execution Engine
