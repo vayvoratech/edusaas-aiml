@@ -42,7 +42,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: ./assignment-execution-service
-    plan: starter # Starter plan recommended for multi-language in-memory compilation
+    plan: standard # Standard plan recommended for multi-language in-memory compilation
     region: oregon
     healthCheckPath: /
     autoDeploy: true
