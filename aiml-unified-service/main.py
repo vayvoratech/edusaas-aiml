@@ -1,11 +1,10 @@
 import base64
-from http.client import HTTPException
 import os
 import time
 import traceback
 from typing import Any, List, Optional
 from uuid import UUID
-
+from http.client import HTTPException
 
 import cv2
 import numpy as np
@@ -876,21 +875,22 @@ async def health():
 # APPLICATION ENTRYPOINT
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
     print("\n==============================================")
     print("Starting EduSaaS Unified AI & Proctoring Service")
     print("==============================================")
-    print("HTTP Root          : http://0.0.0.0:8000/")
-    print("Proctoring WS      : ws://0.0.0.0:8000/ws/proctor")
-    print("Plagiarism Engine  : http://0.0.0.0:8000/api/plagiarism/check")
-    print("Evaluation Engine  : http://0.0.0.0:8000/api/evaluation/evaluate")
-    print("Quiz API           : http://0.0.0.0:8000/api/quiz/")
-    print("Skill Gap API      : http://0.0.0.0:8000/api/skill-gap/")
-    print("Dropout API        : http://0.0.0.0:8000/api/dropout/")
-    print("Hiring API         : http://0.0.0.0:8000/api/hiring/")
-    print("Recommendation API : http://0.0.0.0:8000/api/recommendation/")
+    print(f"HTTP Root          : http://0.0.0.0:{port}/")
+    print(f"Proctoring WS      : ws://0.0.0.0:{port}/ws/proctor")
+    print(f"Plagiarism Engine  : http://0.0.0.0:{port}/api/plagiarism/check")
+    print(f"Evaluation Engine  : http://0.0.0.0:{port}/api/evaluation/evaluate")
+    print(f"Quiz API           : http://0.0.0.0:{port}/api/quiz/")
+    print(f"Skill Gap API      : http://0.0.0.0:{port}/api/skill-gap/")
+    print(f"Dropout API        : http://0.0.0.0:{port}/api/dropout/")
+    print(f"Hiring API         : http://0.0.0.0:{port}/api/hiring/")
+    print(f"Recommendation API : http://0.0.0.0:{port}/api/recommendation/")
     print("==============================================\n")
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8000,
+        port=port,
     )
