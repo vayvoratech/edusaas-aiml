@@ -1,4 +1,4 @@
-from plagiarism.preprocessing.code_cleaner import (
+from modules.plagiarism.preprocessing.code_cleaner import (
     clean_code
 )
 
@@ -7,7 +7,7 @@ from plagiarism.preprocessing.code_cleaner import (
 # TOKENIZATION
 # ============================================================
 
-from plagiarism.similarity.token_similarity import (
+from modules.plagiarism.similarity.token_similarity import (
     tokenize_code,
     jaccard_similarity
 )
@@ -17,7 +17,7 @@ from plagiarism.similarity.token_similarity import (
 # JAVASCRIPT NORMALIZER
 # ============================================================
 
-from plagiarism.similarity.token_normalizer import (
+from modules.plagiarism.similarity.token_normalizer import (
     normalize_tokens
 )
 
@@ -26,7 +26,7 @@ from plagiarism.similarity.token_normalizer import (
 # PYTHON NORMALIZER
 # ============================================================
 
-from plagiarism.similarity.python_token_normalizer import (
+from modules.plagiarism.similarity.python_token_normalizer import (
     normalize_python_tokens
 )
 
@@ -35,7 +35,7 @@ from plagiarism.similarity.python_token_normalizer import (
 # JAVA NORMALIZER
 # ============================================================
 
-from plagiarism.similarity.java_token_normalizer import (
+from modules.plagiarism.similarity.java_token_normalizer import (
     tokenize_java,
     normalize_java_tokens
 )
@@ -45,7 +45,7 @@ from plagiarism.similarity.java_token_normalizer import (
 # NORMALIZED TOKEN SIMILARITY
 # ============================================================
 
-from plagiarism.similarity.normalized_token_similarity import (
+from modules.plagiarism.similarity.normalized_token_similarity import (
     calculate_normalized_token_similarity
 )
 
@@ -54,17 +54,17 @@ from plagiarism.similarity.normalized_token_similarity import (
 # PYTHON AST
 # ============================================================
 
-from plagiarism.similarity.python_ast import (
+from modules.plagiarism.similarity.python_ast import (
     parse_python
 )
 
 
-from plagiarism.similarity.python_ast_features import (
+from modules.plagiarism.similarity.python_ast_features import (
     extract_python_node_types
 )
 
 
-from plagiarism.similarity.python_weights import (
+from modules.plagiarism.similarity.python_weights import (
     PYTHON_NODE_WEIGHTS
 )
 
@@ -73,17 +73,17 @@ from plagiarism.similarity.python_weights import (
 # JAVASCRIPT AST
 # ============================================================
 
-from plagiarism.similarity.javascript_ast import (
+from modules.plagiarism.similarity.javascript_ast import (
     parse_javascript
 )
 
 
-from plagiarism.similarity.ast_features import (
+from modules.plagiarism.similarity.ast_features import (
     extract_node_types
 )
 
 
-from plagiarism.similarity.weighted_ast import (
+from modules.plagiarism.similarity.weighted_ast import (
     NODE_WEIGHTS
 )
 
@@ -92,17 +92,17 @@ from plagiarism.similarity.weighted_ast import (
 # JAVA AST
 # ============================================================
 
-from plagiarism.similarity.java_ast import (
+from modules.plagiarism.similarity.java_ast import (
     parse_java
 )
 
 
-from plagiarism.similarity.java_ast_features import (
+from modules.plagiarism.similarity.java_ast_features import (
     extract_java_node_types
 )
 
 
-from plagiarism.similarity.java_ast_weights import (
+from modules.plagiarism.similarity.java_ast_weights import (
     JAVA_NODE_WEIGHTS
 )
 
@@ -111,7 +111,7 @@ from plagiarism.similarity.java_ast_weights import (
 # WEIGHTED AST
 # ============================================================
 
-from plagiarism.similarity.weighted_ast_similarity import (
+from modules.plagiarism.similarity.weighted_ast_similarity import (
     calculate_weighted_ast_similarity
 )
 
@@ -120,7 +120,7 @@ from plagiarism.similarity.weighted_ast_similarity import (
 # FINAL SCORE
 # ============================================================
 
-from plagiarism.similarity.score_calculator import (
+from modules.plagiarism.similarity.score_calculator import (
     calculate_final_score,
     classify_risk
 )
@@ -130,7 +130,7 @@ from plagiarism.similarity.score_calculator import (
 # LANGUAGE DETECTOR
 # ============================================================
 
-from plagiarism.similarity.language_detector import (
+from modules.plagiarism.similarity.language_detector import (
     detect_language
 )
 
