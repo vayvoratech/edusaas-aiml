@@ -1,9 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from plagiarism.services.plagiarism_service import (
-    compare_code
-)
+from modules.plagiarism.services.plagiarism_service import compare_code
 
 
 router = APIRouter(
