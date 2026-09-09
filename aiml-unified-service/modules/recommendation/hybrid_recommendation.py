@@ -255,6 +255,8 @@ def recommend(
     for matrix_position, similarity_score in (
         distances[1:21]
     ):
+        if matrix_position >= len(courses) or matrix_position < 0:
+            continue
 
         course = courses.iloc[
             matrix_position
