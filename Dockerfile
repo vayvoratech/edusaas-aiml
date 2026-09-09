@@ -43,5 +43,5 @@ COPY aiml-unified-service/ .
 
 EXPOSE ${PORT}
 
-# Run FastAPI app with dynamic Render $PORT binding (falls back to 8000 locally)
+# Run FastAPI app with dynamic Render $PORT binding (falls back to 10000 locally)
 CMD ["sh", "-c", "exec python -u -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --log-level debug"]
