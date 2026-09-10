@@ -54,4 +54,3 @@ Thumbs.db
 # Machine Learning & Media Caches
 .cache/
 runs/
-aiml-unified-service/models/*.pt
