@@ -56,6 +56,7 @@ from modules.exceptions.custom_exceptions import EduAIException
 # code_plagiarism
 
 from modules.plagiarism.routes.plagiarism_routes import router as plagiarism_router
+from modules.plagiarism.routes.mini_project_plagiarism import router as mini_project_router
 
 # -----------------------------------------------------------------------------
 # APPLICATION FACTORY & SETUP
@@ -78,6 +79,7 @@ app.add_middleware(
 app.mount("/api/quiz", WSGIMiddleware(flask_app))
 app.mount("/api/skill-gap", WSGIMiddleware(flask_app))
 app.include_router(plagiarism_router, prefix="/api/plagiarism", tags=["Plagiarism Detection"])
+app.include_router(mini_project_router,prefix="/api/plagiarism/mini-project", tags=["Mini Project Plagiarism"])
 
 # =============================================================================
 # SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
