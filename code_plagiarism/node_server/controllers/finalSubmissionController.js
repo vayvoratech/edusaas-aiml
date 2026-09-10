@@ -198,7 +198,10 @@ async function submitFinalCode(req, res) {
                 pythonRequest.submission,
                 pythonRequest.comparison_submissions
             );
-
+        console.log(
+            "AIML plagiarism response:",
+            JSON.stringify(plagiarismResult, null, 2)
+        );
 
         const matches =
             plagiarismResult.matches || [];

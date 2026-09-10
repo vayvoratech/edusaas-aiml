@@ -3,7 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 
 const finalSubmissionRoutes = require("./routes/finalSubmissionRoutes");
-
+const miniProjectPlagiarismRoutes =require("./routes/miniProjectPlagiarismRoutes");
 const app = express();
 
 const PORT = process.env.PORT || 8080;
@@ -45,6 +45,10 @@ app.use(
     finalSubmissionRoutes
 );
 
+app.use(
+    "/api/plagiarism/mini-project",
+    miniProjectPlagiarismRoutes
+);
 
 // =====================================================
 // 404 HANDLER
