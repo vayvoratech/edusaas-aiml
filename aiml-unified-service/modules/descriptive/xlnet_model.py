@@ -11,13 +11,33 @@ from transformers import XLNetModel, XLNetTokenizer
 xlnet_available = False
 
 # Path to your custom model
-CURRENT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = CURRENT_DIR.parent if CURRENT_DIR.name == "utils" else CURRENT_DIR
+current_dir = Path(__file__).resolve().parent
+model_filename = "xlnet_answer_assessment_model.pt"
 
-DEFAULT_MODEL_PATH = PROJECT_ROOT / "models" / "xlnet_answer_assessment_model.pt"
+# Can be passed via environment variable (e.g., in Render dashboard)
+env_model_path = os.getenv("XLNET_MODEL_PATH")
 
-# Can be overridden via Render Environment Variables, otherwise defaults to local models directory
-CUSTOM_MODEL_PATH = Path(os.getenv("XLNET_MODEL_PATH", str(DEFAULT_MODEL_PATH)))
+candidates = [
+    Path(env_model_path) if env_model_path else None,     # 1. Render/Docker Env Variable
+    current_dir.parent.parent / "models" / model_filename, # 2. Root models/ (2 levels up)
+    current_dir.parent / "models" / model_filename,        # 3. Parent models/ (1 level up)
+    Path("/app/models") / model_filename,                  # 4. Container root
+    Path("models") / model_filename,                       # 5. CWD models/
+    current_dir / "models" / model_filename,               # 6. Local module models/
+]
+
+# Find the first path from the candidates list that actually exists on disk
+resolved_path = next((p for p in candidates if p and p.is_file()), None)
+
+if resolved_path:
+    CUSTOM_MODEL_PATH = resolved_path
+    xlnet_available = True
+    print(f"Loaded custom XLNet model from: {CUSTOM_MODEL_PATH}")
+else:
+    # Fallback default path if file wasn't found anywhere
+    CUSTOM_MODEL_PATH = current_dir.parent.parent / "models" / model_filename
+    xlnet_available = False
+    print(f"Error loading custom XLNet model: Custom model not found in any candidate path. Checked: {CUSTOM_MODEL_PATH}")
 
 
 # Define a custom model class that matches your saved model structure
