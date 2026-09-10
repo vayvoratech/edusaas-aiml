@@ -14,10 +14,8 @@ from modules.plagiarism.services.mini_project_service import (
 # ============================================================
 
 router = APIRouter(
-    prefix="/api/plagiarism/mini-project",
     tags=["Mini Project Plagiarism"]
 )
-
 
 # ============================================================
 # HEALTH CHECK
