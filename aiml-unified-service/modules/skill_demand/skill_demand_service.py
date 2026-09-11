@@ -1,5 +1,6 @@
 # modules/skill_demand/skill_demand_service.py
 import os
+from pathlib import Path
 import joblib
 import pandas as pd
 import numpy as np
@@ -9,62 +10,71 @@ matplotlib.use("Agg")  # Non-interactive headless backend
 import matplotlib.pyplot as plt
 
 class SkillDemandService:
+
     def __init__(
         self,
-        data_file: str = None,
-        model_file: str = None,
-        metadata_file: str = None,
-        output_dir: str = None
+        data_file="weekly_skill_panel.csv",
+        model_file="skill_lgbm_model.joblib",
+        metadata_file="model_metadata.joblib",
+        output_dir="outputs"
     ):
-        # 1. Base directory of this service: <root>/modules/skill_demand/
-        module_dir = os.path.dirname(os.path.abspath(__file__))
-        # 2. Project root directory: <root>/
-        project_root = os.path.abspath(os.path.join(module_dir, "..", ".."))
+        current_dir = Path(__file__).resolve().parent
 
-        # --- Resolve Model Path (Check module dir first, then project root) ---
-        model_candidate_1 = os.path.join(module_dir, "models", "skill_lgbm_model.joblib")
-        model_candidate_2 = os.path.join(project_root, "models", "skill_lgbm_model.joblib")
-        if model_file:
-            self.model_file = model_file
-        elif os.path.exists(model_candidate_1):
-            self.model_file = model_candidate_1
-        else:
-            self.model_file = model_candidate_2
+        # ==================================================
+        # 1. MODEL PATH RESOLUTION
+        # ==================================================
+        model_candidates = [
+            current_dir.parent.parent / "models" / "skill_lgbm_model.joblib",   # root models/
+            Path("/app/models/skill_lgbm_model.joblib"),                         # container root
+            Path("models/skill_lgbm_model.joblib"),                              # cwd models/
+            current_dir / "models" / "skill_lgbm_model.joblib",                  # module local: modules/skill_demand/models/
+            Path(model_file),                                                    # explicit argument
+        ]
+        self.model_file = next((p for p in model_candidates if p.is_file()), model_candidates[0])
 
-        # --- Resolve Metadata Path ---
-        meta_candidate_1 = os.path.join(module_dir, "models", "model_metadata.joblib")
-        meta_candidate_2 = os.path.join(project_root, "models", "model_metadata.joblib")
-        if metadata_file:
-            self.metadata_file = metadata_file
-        elif os.path.exists(meta_candidate_1):
-            self.metadata_file = meta_candidate_1
-        else:
-            self.metadata_file = meta_candidate_2
+        # ==================================================
+        # 2. METADATA PATH RESOLUTION
+        # ==================================================
+        meta_candidates = [
+            current_dir.parent.parent / "models" / "model_metadata.joblib",     # root models/
+            Path("/app/models/model_metadata.joblib"),                           # container root
+            Path("models/model_metadata.joblib"),                                # cwd models/
+            current_dir / "models" / "model_metadata.joblib",                    # module local: modules/skill_demand/models/
+            Path(metadata_file),                                                 # explicit argument
+        ]
+        self.metadata_file = next((p for p in meta_candidates if p.is_file()), meta_candidates[0])
 
-        # --- Resolve CSV Dataset Path ---
-        data_candidate_1 = os.path.join(module_dir, "data", "weekly_skill_panel.csv")
-        data_candidate_2 = os.path.join(project_root, "data", "weekly_skill_panel.csv")
-        if data_file:
-            self.data_file = data_file
-        elif os.path.exists(data_candidate_1):
-            self.data_file = data_candidate_1
-        else:
-            self.data_file = data_candidate_2
+        # ==================================================
+        # 3. DATASET PATH RESOLUTION (data inside models/)
+        # ==================================================
+        data_candidates = [
+            current_dir.parent.parent / "models" / "data" / "weekly_skill_panel.csv",  # root models/data/
+            Path("/app/models/data/weekly_skill_panel.csv"),                            # container root /app/models/data/
+            Path("models/data/weekly_skill_panel.csv"),                                 # cwd models/data/
+            current_dir / "models" / "data" / "weekly_skill_panel.csv",                 # module local: modules/skill_demand/models/data/
+            current_dir.parent.parent / "data" / "weekly_skill_panel.csv",              # fallback root data/
+            Path(data_file),                                                             # explicit argument
+        ]
+        self.data_file = next((p for p in data_candidates if p.is_file()), data_candidates[0])
 
-        # --- Output directory ---
-        self.output_dir = output_dir or os.path.join(module_dir, "outputs")
-        os.makedirs(self.output_dir, exist_ok=True)
+        # ==================================================
+        # 4. OUTPUT DIRECTORY RESOLUTION
+        # ==================================================
+        self.output_dir = current_dir / output_dir
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Convert to string/Path format for downstream libraries
         self.model = None
         self.meta = None
         self.raw_df = None
 
         print("\n" + "=" * 55)
-        print("SKILL DEMAND SERVICE: ARTIFACT PATH CHECK")
+        print("SKILL DEMAND ENGINE: PATH CANDIDATE RESOLUTION")
         print("=" * 55)
-        print(f"Model file   : {self.model_file} | Exists: {os.path.exists(self.model_file)}")
-        print(f"Metadata file: {self.metadata_file} | Exists: {os.path.exists(self.metadata_file)}")
-        print(f"Dataset file : {self.data_file} | Exists: {os.path.exists(self.data_file)}")
+        print(f"Model file   : {self.model_file} (exists: {self.model_file.is_file()})")
+        print(f"Metadata file: {self.metadata_file} (exists: {self.metadata_file.is_file()})")
+        print(f"Dataset file : {self.data_file} (exists: {self.data_file.is_file()})")
+        print(f"Output dir   : {self.output_dir}")
         print("=" * 55 + "\n")
 
         self.load_artifacts()
