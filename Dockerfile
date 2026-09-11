@@ -18,6 +18,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         python3-dev \
+        cmake \
+        git \
+        git-lfs \
         curl \
         nodejs \
         npm \
@@ -29,9 +32,12 @@ RUN apt-get update \
         libgomp1 \
         libegl1 \
         libgles2 \
+    && git lfs install \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# 2. Python build tools (Crucial for 3.13 source compilation)
+RUN python -m pip install --upgrade pip setuptools wheel Cython
 # Install Python requirements from subfolder
 COPY aiml-unified-service/requirements.txt requirements.txt
 
@@ -40,6 +46,11 @@ RUN python -m pip install --upgrade pip \
 
 # Copy application source code
 COPY aiml-unified-service/ .
+# 5. Pull real binary weights if git LFS pointers exist
+RUN if [ -d ".git" ]; then git lfs pull; fi
+
+# 6. Pre-create output directory for charts
+RUN mkdir -p modules/skill_demand/outputs outputs
 
 EXPOSE ${PORT}
 

@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive headless backend
 import matplotlib.pyplot as plt
 
+
 class SkillDemandService:
 
     def __init__(
@@ -63,10 +64,10 @@ class SkillDemandService:
         self.output_dir = current_dir / output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Convert to string/Path format for downstream libraries
         self.model = None
         self.meta = None
         self.raw_df = None
+        self.last_load_error = None
 
         print("\n" + "=" * 55)
         print("SKILL DEMAND ENGINE: PATH CANDIDATE RESOLUTION")
@@ -81,29 +82,46 @@ class SkillDemandService:
         self.load_panel_data()
 
     def load_artifacts(self):
-        """Loads serialized model and metadata."""
-        if not os.path.exists(self.model_file):
-            print(f"[SkillDemandService ERROR] Missing model artifact at: {self.model_file}")
+        """Loads serialized model and metadata with size validation."""
+        if not self.model_file.is_file():
+            self.last_load_error = f"Model artifact not found on disk at {self.model_file}"
+            print(f"[SkillDemand ERROR] {self.last_load_error}")
             return
-        if not os.path.exists(self.metadata_file):
-            print(f"[SkillDemandService ERROR] Missing metadata artifact at: {self.metadata_file}")
+        if not self.metadata_file.is_file():
+            self.last_load_error = f"Metadata artifact not found on disk at {self.metadata_file}"
+            print(f"[SkillDemand ERROR] {self.last_load_error}")
+            return
+
+        model_size = self.model_file.stat().st_size
+        meta_size = self.metadata_file.stat().st_size
+        print(f"[SkillDemand] Discovered model: {self.model_file} ({model_size} bytes)")
+        print(f"[SkillDemand] Discovered metadata: {self.metadata_file} ({meta_size} bytes)")
+
+        # Git LFS pointer text file is typically ~120-140 bytes
+        if model_size < 500:
+            self.last_load_error = (
+                f"Model file at {self.model_file} is only {model_size} bytes. "
+                "This is a Git LFS pointer text file, not the raw binary weights!"
+            )
+            print(f"[SkillDemand CRITICAL] {self.last_load_error}")
             return
 
         try:
-            self.model = joblib.load(self.model_file)
-            self.meta = joblib.load(self.metadata_file)
-            print("[SkillDemandService] Successfully loaded LightGBM model and metadata.")
+            self.model = joblib.load(str(self.model_file))
+            self.meta = joblib.load(str(self.metadata_file))
+            print("[SkillDemand] Successfully loaded LightGBM model and metadata.")
         except Exception as e:
-            print(f"[SkillDemandService ERROR] Failed to load .joblib files: {e}")
+            self.last_load_error = f"joblib.load unpickling error: {type(e).__name__}: {str(e)}"
+            print(f"[SkillDemand ERROR] {self.last_load_error}")
 
     def load_panel_data(self):
         """Cleans and normalizes weekly panel into percentage market share."""
-        if not os.path.exists(self.data_file):
-            print(f"[SkillDemandService ERROR] Missing dataset file at: {self.data_file}")
+        if not self.data_file.is_file():
+            print(f"[SkillDemand ERROR] Missing dataset file at: {self.data_file}")
             return
 
         try:
-            df = pd.read_csv(self.data_file)
+            df = pd.read_csv(str(self.data_file))
             df.columns = [c.lower().strip().replace('"', '') for c in df.columns]
 
             if "tagname" in df.columns:
@@ -125,9 +143,9 @@ class SkillDemandService:
             totals = df.groupby("date")["skill_count"].transform("sum")
             df["skill_share"] = (df["skill_count"] / totals.replace(0, 1)) * 100
             self.raw_df = df
-            print(f"[SkillDemandService] Successfully loaded dataset ({len(df)} rows).")
+            print(f"[SkillDemand] Dataset loaded successfully ({len(df)} rows).")
         except Exception as e:
-            print(f"[SkillDemandService ERROR] Failed to load dataset: {e}")
+            print(f"[SkillDemand ERROR] Failed to load dataset: {type(e).__name__}: {e}")
 
     def get_available_skills(self) -> list:
         if not self.meta:
@@ -140,7 +158,9 @@ class SkillDemandService:
             if self.model is None: missing.append(f"Model ({self.model_file})")
             if self.meta is None: missing.append(f"Metadata ({self.metadata_file})")
             if self.raw_df is None: missing.append(f"Dataset ({self.data_file})")
-            raise RuntimeError(f"Missing loaded artifacts: {', '.join(missing)}")
+
+            error_diag = self.last_load_error or "Artifacts missing on disk or failed unpickling."
+            raise RuntimeError(f"Missing loaded artifacts: {', '.join(missing)} | Details: {error_diag}")
 
         skill_clean = skill_name.strip().lower()
         if skill_clean not in self.meta["available_skills"]:
@@ -188,7 +208,7 @@ class SkillDemandService:
         # Generate & save plot
         safe_name = skill_clean.replace(".", "_").replace("/", "_")
         output_filename = f"{safe_name}_share_forecast.png"
-        output_path = os.path.join(self.output_dir, output_filename)
+        output_path = self.output_dir / output_filename
 
         plot_df = series.tail(18)
         plt.figure(figsize=(10, 4.5))
@@ -204,7 +224,7 @@ class SkillDemandService:
         plt.legend()
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
-        plt.savefig(output_path)
+        plt.savefig(str(output_path))
         plt.close()
 
         return {
@@ -214,7 +234,7 @@ class SkillDemandService:
             "trailing_3m_baseline_pct": round(baseline_3m, 2),
             "final_projected_share_pct": end_val,
             "net_share_change_pct": diff,
-            "saved_chart_path": output_path,
+            "saved_chart_path": str(output_path),
             "chart_url": f"/outputs/{output_filename}",
             "timeline": [
                 {"date": d.strftime("%Y-%m-%d"), "predicted_share_pct": p}
