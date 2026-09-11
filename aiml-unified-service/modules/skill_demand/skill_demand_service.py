@@ -1,4 +1,4 @@
-# skill_demand_service.py
+# modules/skill_demand/skill_demand_service.py
 import os
 import joblib
 import pandas as pd
@@ -16,60 +16,108 @@ class SkillDemandService:
         metadata_file: str = None,
         output_dir: str = None
     ):
-        # Resolves to: <project_root>/modules/skill_demand/
+        # 1. Base directory of this service: <root>/modules/skill_demand/
         module_dir = os.path.dirname(os.path.abspath(__file__))
+        # 2. Project root directory: <root>/
+        project_root = os.path.abspath(os.path.join(module_dir, "..", ".."))
 
-        self.data_file = data_file or os.path.join(module_dir, "data", "weekly_skill_panel.csv")
-        self.model_file = model_file or os.path.join(module_dir, "models", "skill_lgbm_model.joblib")
-        self.metadata_file = metadata_file or os.path.join(module_dir, "models", "model_metadata.joblib")
-        
-        # Saves to: <project_root>/modules/skill_demand/outputs/
+        # --- Resolve Model Path (Check module dir first, then project root) ---
+        model_candidate_1 = os.path.join(module_dir, "models", "skill_lgbm_model.joblib")
+        model_candidate_2 = os.path.join(project_root, "models", "skill_lgbm_model.joblib")
+        if model_file:
+            self.model_file = model_file
+        elif os.path.exists(model_candidate_1):
+            self.model_file = model_candidate_1
+        else:
+            self.model_file = model_candidate_2
+
+        # --- Resolve Metadata Path ---
+        meta_candidate_1 = os.path.join(module_dir, "models", "model_metadata.joblib")
+        meta_candidate_2 = os.path.join(project_root, "models", "model_metadata.joblib")
+        if metadata_file:
+            self.metadata_file = metadata_file
+        elif os.path.exists(meta_candidate_1):
+            self.metadata_file = meta_candidate_1
+        else:
+            self.metadata_file = meta_candidate_2
+
+        # --- Resolve CSV Dataset Path ---
+        data_candidate_1 = os.path.join(module_dir, "data", "weekly_skill_panel.csv")
+        data_candidate_2 = os.path.join(project_root, "data", "weekly_skill_panel.csv")
+        if data_file:
+            self.data_file = data_file
+        elif os.path.exists(data_candidate_1):
+            self.data_file = data_candidate_1
+        else:
+            self.data_file = data_candidate_2
+
+        # --- Output directory ---
         self.output_dir = output_dir or os.path.join(module_dir, "outputs")
+        os.makedirs(self.output_dir, exist_ok=True)
 
         self.model = None
         self.meta = None
         self.raw_df = None
 
-        os.makedirs(self.output_dir, exist_ok=True)
+        print("\n" + "=" * 55)
+        print("SKILL DEMAND SERVICE: ARTIFACT PATH CHECK")
+        print("=" * 55)
+        print(f"Model file   : {self.model_file} | Exists: {os.path.exists(self.model_file)}")
+        print(f"Metadata file: {self.metadata_file} | Exists: {os.path.exists(self.metadata_file)}")
+        print(f"Dataset file : {self.data_file} | Exists: {os.path.exists(self.data_file)}")
+        print("=" * 55 + "\n")
+
         self.load_artifacts()
         self.load_panel_data()
 
     def load_artifacts(self):
         """Loads serialized model and metadata."""
-        if os.path.exists(self.model_file) and os.path.exists(self.metadata_file):
+        if not os.path.exists(self.model_file):
+            print(f"[SkillDemandService ERROR] Missing model artifact at: {self.model_file}")
+            return
+        if not os.path.exists(self.metadata_file):
+            print(f"[SkillDemandService ERROR] Missing metadata artifact at: {self.metadata_file}")
+            return
+
+        try:
             self.model = joblib.load(self.model_file)
             self.meta = joblib.load(self.metadata_file)
-        else:
-            print(f"[Warning] Artifacts missing at {self.model_file} or {self.metadata_file}. Run train.py first.")
+            print("[SkillDemandService] Successfully loaded LightGBM model and metadata.")
+        except Exception as e:
+            print(f"[SkillDemandService ERROR] Failed to load .joblib files: {e}")
 
     def load_panel_data(self):
         """Cleans and normalizes weekly panel into percentage market share."""
         if not os.path.exists(self.data_file):
-            print(f"[Warning] Missing dataset at {self.data_file}")
+            print(f"[SkillDemandService ERROR] Missing dataset file at: {self.data_file}")
             return
 
-        df = pd.read_csv(self.data_file)
-        df.columns = [c.lower().strip().replace('"', '') for c in df.columns]
+        try:
+            df = pd.read_csv(self.data_file)
+            df.columns = [c.lower().strip().replace('"', '') for c in df.columns]
 
-        if "tagname" in df.columns:
-            df.rename(columns={"tagname": "skill_abr"}, inplace=True)
-        if "count" in df.columns:
-            df.rename(columns={"count": "skill_count"}, inplace=True)
+            if "tagname" in df.columns:
+                df.rename(columns={"tagname": "skill_abr"}, inplace=True)
+            if "count" in df.columns:
+                df.rename(columns={"count": "skill_count"}, inplace=True)
 
-        df["date"] = pd.to_datetime(df["date"].astype(str).str.replace('"', '').str.strip())
-        df["skill_abr"] = df["skill_abr"].astype(str).str.replace('"', '').str.strip().str.lower()
-        df["skill_count"] = df["skill_count"].astype(str).str.replace('"', '').str.strip().astype(int)
+            df["date"] = pd.to_datetime(df["date"].astype(str).str.replace('"', '').str.strip())
+            df["skill_abr"] = df["skill_abr"].astype(str).str.replace('"', '').str.strip().str.lower()
+            df["skill_count"] = df["skill_count"].astype(str).str.replace('"', '').str.strip().astype(int)
 
-        # Filter out low-volume boundary periods
-        monthly_volumes = df.groupby("date")["skill_count"].sum()
-        median_vol = monthly_volumes.median()
-        valid_dates = monthly_volumes[monthly_volumes >= (0.35 * median_vol)].index
-        df = df[df["date"].isin(valid_dates)].copy()
+            # Filter out low-volume boundary periods
+            monthly_volumes = df.groupby("date")["skill_count"].sum()
+            median_vol = monthly_volumes.median()
+            valid_dates = monthly_volumes[monthly_volumes >= (0.35 * median_vol)].index
+            df = df[df["date"].isin(valid_dates)].copy()
 
-        # Compute market share %
-        totals = df.groupby("date")["skill_count"].transform("sum")
-        df["skill_share"] = (df["skill_count"] / totals.replace(0, 1)) * 100
-        self.raw_df = df
+            # Compute market share %
+            totals = df.groupby("date")["skill_count"].transform("sum")
+            df["skill_share"] = (df["skill_count"] / totals.replace(0, 1)) * 100
+            self.raw_df = df
+            print(f"[SkillDemandService] Successfully loaded dataset ({len(df)} rows).")
+        except Exception as e:
+            print(f"[SkillDemandService ERROR] Failed to load dataset: {e}")
 
     def get_available_skills(self) -> list:
         if not self.meta:
@@ -78,7 +126,11 @@ class SkillDemandService:
 
     def forecast_skill(self, skill_name: str, periods: int = 6) -> dict:
         if self.model is None or self.meta is None or self.raw_df is None:
-            raise RuntimeError("Model artifacts or datasets are not loaded.")
+            missing = []
+            if self.model is None: missing.append(f"Model ({self.model_file})")
+            if self.meta is None: missing.append(f"Metadata ({self.metadata_file})")
+            if self.raw_df is None: missing.append(f"Dataset ({self.data_file})")
+            raise RuntimeError(f"Missing loaded artifacts: {', '.join(missing)}")
 
         skill_clean = skill_name.strip().lower()
         if skill_clean not in self.meta["available_skills"]:
@@ -153,6 +205,7 @@ class SkillDemandService:
             "final_projected_share_pct": end_val,
             "net_share_change_pct": diff,
             "saved_chart_path": output_path,
+            "chart_url": f"/outputs/{output_filename}",
             "timeline": [
                 {"date": d.strftime("%Y-%m-%d"), "predicted_share_pct": p}
                 for d, p in zip(future_dates, future_preds)
