@@ -11,8 +11,10 @@ import cv2
 import numpy as np
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.wsgi import WSGIMiddleware
+from fastapi.staticfiles import StaticFiles
 from flask import Flask
 from pydantic import BaseModel, Field
 
@@ -52,11 +54,63 @@ from modules.hiring.hiring_service import hiring_service
 from modules.recommendation.recommend import get_recommendations
 from modules.exceptions.custom_exceptions import EduAIException
 
-
-# code_plagiarism
+# -----------------------------------------------------------------------------
+# 4. CODE PLAGIARISM
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 from modules.plagiarism.routes.plagiarism_routes import router as plagiarism_router
 from modules.plagiarism.routes.mini_project_plagiarism import router as mini_project_router
+
+
+# -----------------------------------------------------------------------------
+# 5. SKILL DEMAND ROUTER INITIALIZATION
+# -----------------------------------------------------------------------------
+
+from modules.skill_demand.skill_demand_service import SkillDemandService
+skill_demand_service = SkillDemandService()
+skill_demand_router = APIRouter(tags=["Skill Demand Forecasting"])
+class BatchForecastRequest(BaseModel):
+    skills: List[str] = Field(..., example=["python", "docker", "kubernetes"])
+    periods: int = Field(6, ge=1, le=24, example=6)
+
+@skill_demand_router.get("/skills")
+def get_skills():
+    skills = skill_demand_service.get_available_skills()
+    if not skills:
+        raise HTTPException(status_code=500, detail="Metadata artifact missing or empty.")
+    return {"skills": skills}
+
+@skill_demand_router.get("/predict/{skill_name}")
+def predict_skill(skill_name: str, periods: int = Query(6, ge=1, le=24)):
+    try:
+        return skill_demand_service.forecast_skill(skill_name=skill_name, periods=periods)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@skill_demand_router.post("/predict/batch")
+def predict_batch(payload: BatchForecastRequest):
+    results = []
+    errors = []
+    for raw_skill in payload.skills:
+        try:
+            data = skill_demand_service.forecast_skill(skill_name=raw_skill, periods=payload.periods)
+            results.append(data)
+        except ValueError as ve:
+            errors.append({"skill": raw_skill, "error": str(ve)})
+        except Exception as e:
+            errors.append({"skill": raw_skill, "error": str(e)})
+    return {
+        "success": True,
+        "total_requested": len(payload.skills),
+        "successful": len(results),
+        "failed": len(errors),
+        "results": results,
+        "errors": errors
+    }
+
 
 # -----------------------------------------------------------------------------
 # APPLICATION FACTORY & SETUP
@@ -75,11 +129,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SKILL_DEMAND_OUTPUT_DIR = os.path.join(BASE_DIR, "modules", "skill_demand", "outputs")
+
+os.makedirs(SKILL_DEMAND_OUTPUT_DIR, exist_ok=True)
+app.mount("/outputs", StaticFiles(directory=SKILL_DEMAND_OUTPUT_DIR), name="outputs")
+
 # Mount Modular Routers
 app.mount("/api/quiz", WSGIMiddleware(flask_app))
 app.mount("/api/skill-gap", WSGIMiddleware(flask_app))
 app.include_router(plagiarism_router, prefix="/api/plagiarism", tags=["Plagiarism Detection"])
 app.include_router(mini_project_router,prefix="/api/plagiarism/mini-project", tags=["Mini Project Plagiarism"])
+app.include_router(skill_demand_router, tags=["Skill Demand Forecasting"])
 
 # =============================================================================
 # SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
@@ -308,8 +369,7 @@ def evaluate_descriptive_answer(payload: EvaluationRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-    
-
+        
 # -----------------------------------------------------------------------------
 # PROCTORING CONSTANTS & MODEL LOADING
 # -----------------------------------------------------------------------------
@@ -842,6 +902,9 @@ async def root():
             "skill_gap_api": "/api/skill-gap/*",
             "dropout_api": "/api/dropout/predict",
             "hiring_api": "/api/hiring/predict",
+            "skill_demand_skills": "/skills",
+            "skill_demand_predict": "/predict/{skill_name}",
+            "skill_demand_batch": "/predict/batch",
             "recommendation_api": "/api/recommendation/recommend"
         },
         "models": {
@@ -871,7 +934,7 @@ async def health():
         "service": "aiml-unified-service",
         "components": ["proctoring", "plagiarism", "quiz", "skill-gap","dropout",
             "hiring",
-            "recommendation","evaluation"]
+            "recommendation","evaluation","skill_demand"]
     }
 
 # -----------------------------------------------------------------------------
@@ -891,6 +954,7 @@ if __name__ == "__main__":
     print(f"Dropout API        : http://0.0.0.0:{port}/api/dropout/")
     print(f"Hiring API         : http://0.0.0.0:{port}/api/hiring/")
     print(f"Recommendation API : http://0.0.0.0:{port}/api/recommendation/")
+    print(f"Skill Demand Engine: http://0.0.0.0:{port}/skills")
     print("==============================================\n")
     uvicorn.run(
         app,
