@@ -62,9 +62,12 @@ from modules.exceptions.custom_exceptions import EduAIException
 from modules.plagiarism.routes.plagiarism_routes import router as plagiarism_router
 from modules.plagiarism.routes.mini_project_plagiarism import router as mini_project_router
 
-
 # -----------------------------------------------------------------------------
-# 5. SKILL DEMAND ROUTER INITIALIZATION
+# 5.PERFORMANCE PREDICTION
+# -----------------------------------------------------------------------------
+from modules.performance.routers.performance_prediction import router as performance_prediction_router
+# -----------------------------------------------------------------------------
+# 6. SKILL DEMAND ROUTER INITIALIZATION
 # -----------------------------------------------------------------------------
 
 from modules.skill_demand.skill_demand_service import SkillDemandService
@@ -141,6 +144,7 @@ app.mount("/api/skill-gap", WSGIMiddleware(flask_app))
 app.include_router(plagiarism_router, prefix="/api/plagiarism", tags=["Plagiarism Detection"])
 app.include_router(mini_project_router,prefix="/api/plagiarism/mini-project", tags=["Mini Project Plagiarism"])
 app.include_router(skill_demand_router, tags=["Skill Demand Forecasting"])
+app.include_router(performance_prediction_router, tags=["Performance Prediction"])
 
 # =============================================================================
 # SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
@@ -905,6 +909,7 @@ async def root():
             "skill_demand_skills": "/skills",
             "skill_demand_predict": "/predict/{skill_name}",
             "skill_demand_batch": "/predict/batch",
+            "performance_prediction_api": "/predict/performance",
             "recommendation_api": "/api/recommendation/recommend"
         },
         "models": {
@@ -916,6 +921,7 @@ async def root():
             "phone": "YOLO11s",
             "dropout": "RandomForest",
             "hiring": "RandomForest",
+            "performance_prediction": "XGBoost (Fallback: RandomForest)",
             "recommendation": "Hybrid SVD + ContentSimilarity",
             "head_pose": "REMOVED"
         },
@@ -934,7 +940,7 @@ async def health():
         "service": "aiml-unified-service",
         "components": ["proctoring", "plagiarism", "quiz", "skill-gap","dropout",
             "hiring",
-            "recommendation","evaluation","skill_demand"]
+            "recommendation","evaluation","performance_prediction","skill_demand"]
     }
 
 # -----------------------------------------------------------------------------
@@ -955,6 +961,7 @@ if __name__ == "__main__":
     print(f"Hiring API         : http://0.0.0.0:{port}/api/hiring/")
     print(f"Recommendation API : http://0.0.0.0:{port}/api/recommendation/")
     print(f"Skill Demand Engine: http://0.0.0.0:{port}/skills")
+    print(f"Performance Engine : http://0.0.0.0:{port}/predict/performance")
     print("==============================================\n")
     uvicorn.run(
         app,
