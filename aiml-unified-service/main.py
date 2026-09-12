@@ -66,8 +66,14 @@ from modules.plagiarism.routes.mini_project_plagiarism import router as mini_pro
 # 5.PERFORMANCE PREDICTION
 # -----------------------------------------------------------------------------
 from modules.performance.routers.performance_prediction import router as performance_prediction_router
+
 # -----------------------------------------------------------------------------
-# 6. SKILL DEMAND ROUTER INITIALIZATION
+# 6.FRAUD DETECTION AND SENTIMENT ANALYSIS
+# -----------------------------------------------------------------------------
+from modules.fraud.fraud_router import router as fraud_router
+from modules.sentiment.sentiment_router import router as sentiment_router
+# -----------------------------------------------------------------------------
+# 7. SKILL DEMAND ROUTER INITIALIZATION
 # -----------------------------------------------------------------------------
 
 from modules.skill_demand.skill_demand_service import SkillDemandService
@@ -145,6 +151,8 @@ app.include_router(plagiarism_router, prefix="/api/plagiarism", tags=["Plagiaris
 app.include_router(mini_project_router,prefix="/api/plagiarism/mini-project", tags=["Mini Project Plagiarism"])
 app.include_router(skill_demand_router, tags=["Skill Demand Forecasting"])
 app.include_router(performance_prediction_router, tags=["Performance Prediction"])
+app.include_router(fraud_router)
+app.include_router(sentiment_router)
 
 # =============================================================================
 # SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
@@ -910,7 +918,10 @@ async def root():
             "skill_demand_predict": "/predict/{skill_name}",
             "skill_demand_batch": "/predict/batch",
             "performance_prediction_api": "/predict/performance",
-            "recommendation_api": "/api/recommendation/recommend"
+            "recommendation_api": "/api/recommendation/recommend",
+            "sentiment_analysis": "/sentiment/predict",
+            "fraud_prediction_api": "/fraud/predict"
+            
         },
         "models": {
             "face_presence": "MediaPipe",
@@ -923,6 +934,8 @@ async def root():
             "hiring": "RandomForest",
             "performance_prediction": "XGBoost (Fallback: RandomForest)",
             "recommendation": "Hybrid SVD + ContentSimilarity",
+            "fraud_detection": "Random Forest + Isolation Forest",
+            "sentiment_analysis": "DistilBertForSequenceClassification",
             "head_pose": "REMOVED"
         },
         "fraud_policy": {
@@ -940,7 +953,7 @@ async def health():
         "service": "aiml-unified-service",
         "components": ["proctoring", "plagiarism", "quiz", "skill-gap","dropout",
             "hiring",
-            "recommendation","evaluation","performance_prediction","skill_demand"]
+            "recommendation","evaluation","performance_prediction","skill_demand","fraud_detection","sentiment_analysis"]
     }
 
 # -----------------------------------------------------------------------------
@@ -962,6 +975,8 @@ if __name__ == "__main__":
     print(f"Recommendation API : http://0.0.0.0:{port}/api/recommendation/")
     print(f"Skill Demand Engine: http://0.0.0.0:{port}/skills")
     print(f"Performance Engine : http://0.0.0.0:{port}/predict/performance")
+    print(f"Fraud Detection Engine : http://0.0.0.0:{port}/fraud/predict")
+    print(f"Sentiment Engine       : http://0.0.0.0:{port}/sentiment/predict")
     print("==============================================\n")
     uvicorn.run(
         app,
