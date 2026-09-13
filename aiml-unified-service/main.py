@@ -68,10 +68,12 @@ from modules.plagiarism.routes.mini_project_plagiarism import router as mini_pro
 from modules.performance.routers.performance_prediction import router as performance_prediction_router
 
 # -----------------------------------------------------------------------------
-# 6.FRAUD DETECTION AND SENTIMENT ANALYSIS
+# 6.FRAUD DETECTION AND SENTIMENT ANALYSIS AND TOXICITY DETECTION
 # -----------------------------------------------------------------------------
 from modules.fraud.fraud_router import router as fraud_router
 from modules.sentiment.sentiment_router import router as sentiment_router
+from modules.toxicity.toxicity_router import router as toxicity_router
+
 # -----------------------------------------------------------------------------
 # 7. SKILL DEMAND ROUTER INITIALIZATION
 # -----------------------------------------------------------------------------
@@ -153,6 +155,7 @@ app.include_router(skill_demand_router, tags=["Skill Demand Forecasting"])
 app.include_router(performance_prediction_router, tags=["Performance Prediction"])
 app.include_router(fraud_router)
 app.include_router(sentiment_router)
+app.include_router(toxicity_router)
 
 # =============================================================================
 # SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
@@ -920,7 +923,8 @@ async def root():
             "performance_prediction_api": "/predict/performance",
             "recommendation_api": "/api/recommendation/recommend",
             "sentiment_analysis": "/sentiment/predict",
-            "fraud_prediction_api": "/fraud/predict"
+            "fraud_prediction_api": "/fraud/predict",
+            "toxicity_detection": "/toxicity/predict"
             
         },
         "models": {
@@ -936,6 +940,7 @@ async def root():
             "recommendation": "Hybrid SVD + ContentSimilarity",
             "fraud_detection": "Random Forest + Isolation Forest",
             "sentiment_analysis": "DistilBertForSequenceClassification",
+            "toxicity_detection": "DistilBert Multi-label Classification",
             "head_pose": "REMOVED"
         },
         "fraud_policy": {
@@ -953,7 +958,7 @@ async def health():
         "service": "aiml-unified-service",
         "components": ["proctoring", "plagiarism", "quiz", "skill-gap","dropout",
             "hiring",
-            "recommendation","evaluation","performance_prediction","skill_demand","fraud_detection","sentiment_analysis"]
+            "recommendation","evaluation","performance_prediction","skill_demand","fraud_detection","sentiment_analysis","toxicity_detection"]
     }
 
 # -----------------------------------------------------------------------------
@@ -977,6 +982,7 @@ if __name__ == "__main__":
     print(f"Performance Engine : http://0.0.0.0:{port}/predict/performance")
     print(f"Fraud Detection Engine : http://0.0.0.0:{port}/fraud/predict")
     print(f"Sentiment Engine       : http://0.0.0.0:{port}/sentiment/predict")
+    print(f"Toxicity Engine        : http://0.0.0.0:{port}/toxicity/predict")
     print("==============================================\n")
     uvicorn.run(
         app,
