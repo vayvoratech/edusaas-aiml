@@ -13,9 +13,11 @@ class ToxicityService:
 
     def __init__(
         self,
-        model_path="models/toxicity",
+        model_path=None,
         threshold=0.5,
     ):
+        # Passing model_path=None allows ToxicityPredictor and
+        # ToxicityModelLoader to use their dynamic candidate paths.
         self.predictor = ToxicityPredictor(
             model_path=model_path,
             threshold=threshold,
