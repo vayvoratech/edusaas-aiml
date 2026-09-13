@@ -1,11 +1,13 @@
 import base64
 import os
 import time
+import torch
 import traceback
 from typing import Any, List, Optional
 from uuid import UUID
 from fastapi import HTTPException
 from contextlib import asynccontextmanager
+
 
 import cv2
 import numpy as np
@@ -18,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from flask import Flask
 from pydantic import BaseModel, Field
 
+torch.set_num_threads(1)
 # -----------------------------------------------------------------------------
 # 1. QUIZ SERVICE INTEGRATION (FLASK WSGI MOUNT)
 # -----------------------------------------------------------------------------
@@ -73,6 +76,20 @@ from modules.performance.routers.performance_prediction import router as perform
 from modules.fraud.fraud_router import router as fraud_router
 from modules.sentiment.sentiment_router import router as sentiment_router
 from modules.toxicity.toxicity_router import router as toxicity_router
+from modules.toxicity import toxicity_router as toxicity_module
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("\n" + "=" * 55)
+    print("[STARTUP] Pre-loading Quantized Toxicity Model...")
+    print("=" * 55)
+    try:
+        toxicity_module.get_toxicity_service()
+        print("[STARTUP] Toxicity Model successfully loaded into memory.\n")
+    except Exception as err:
+        print(f"[STARTUP ERROR] Could not load Toxicity Model: {err}\n")
+    yield
+    print("[SHUTDOWN] Application shutting down.")
 
 # -----------------------------------------------------------------------------
 # 7. SKILL DEMAND ROUTER INITIALIZATION
@@ -129,7 +146,8 @@ def predict_batch(payload: BatchForecastRequest):
 app = FastAPI(
     title="EduSaaS Unified AI & Proctoring Service",
     version="2.0.0",
-    description="Unified single-gateway engine for Proctoring, Plagiarism, Quiz, Skill Gap, Dropout, Hiring, and Recommendations."
+    description="Unified single-gateway engine for Proctoring, Plagiarism, Quiz, Skill Gap, Dropout, Hiring, and Recommendations.",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -155,7 +173,7 @@ app.include_router(skill_demand_router, tags=["Skill Demand Forecasting"])
 app.include_router(performance_prediction_router, tags=["Performance Prediction"])
 app.include_router(fraud_router)
 app.include_router(sentiment_router)
-app.include_router(toxicity_router)
+app.include_router(toxicity_module.router)
 
 # =============================================================================
 # SECTION A: DROPOUT PREDICTION SCHEMAS & ENDPOINTS
