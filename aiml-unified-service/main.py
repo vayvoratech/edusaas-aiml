@@ -7,6 +7,7 @@ from typing import Any, List, Optional
 from uuid import UUID
 from fastapi import HTTPException
 from contextlib import asynccontextmanager
+import gc
 
 
 import cv2
@@ -80,14 +81,9 @@ from modules.toxicity import toxicity_router as toxicity_module
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("\n" + "=" * 55)
-    print("[STARTUP] Pre-loading Quantized Toxicity Model...")
-    print("=" * 55)
-    try:
-        toxicity_module.get_toxicity_service()
-        print("[STARTUP] Toxicity Model successfully loaded into memory.\n")
-    except Exception as err:
-        print(f"[STARTUP ERROR] Could not load Toxicity Model: {err}\n")
+    # Free any cached memory from proctoring/sentiment imports
+    gc.collect()
+    print("[STARTUP] Server ready. Heavy models will lazy-load on first request.")
     yield
     print("[SHUTDOWN] Application shutting down.")
 
