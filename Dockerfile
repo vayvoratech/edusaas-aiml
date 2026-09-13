@@ -1,4 +1,4 @@
-FROM python:3.13-bookworm
+FROM python:3.13-slim
 
 ENV OMP_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
