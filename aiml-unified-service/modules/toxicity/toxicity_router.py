@@ -8,18 +8,28 @@ router = APIRouter(
     tags=["Toxicity Detection"]
 )
 
+
 class ToxicityRequest(BaseModel):
     student_id: str = Field(..., description="Student identifier")
     discussion_id: str = Field(..., description="Discussion/post identifier")
     post_text: str = Field(..., min_length=1, description="Discussion post text")
 
-toxicity_service = None
 
-def get_toxicity_service():
+toxicity_service: ToxicityService = None
+
+
+def get_toxicity_service() -> ToxicityService:
     global toxicity_service
     if toxicity_service is None:
-        toxicity_service = ToxicityService()
+        try:
+            toxicity_service = ToxicityService()
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Toxicity model is not loaded: {e}"
+            )
     return toxicity_service
+
 
 @router.get("/health")
 def health_check():
@@ -27,6 +37,7 @@ def health_check():
         "status": "healthy",
         "service": "toxicity",
     }
+
 
 @router.post("/predict")
 def predict_toxicity(request: ToxicityRequest):
